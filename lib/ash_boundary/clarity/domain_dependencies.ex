@@ -34,7 +34,7 @@ with {:module, Clarity.Content} <- Code.ensure_loaded(Clarity.Content) do
 
     @spec dot([module()], [module()], Clarity.Content.static_content_props()) :: iodata()
     defp dot(roots, highlight, %{theme: theme}) do
-      {modules, edges} = walk(roots, MapSet.new(), [])
+      {modules, edges} = walk(roots, %{}, [])
 
       [
         "digraph {\n",
@@ -52,19 +52,20 @@ with {:module, Clarity.Content} <- Code.ensure_loaded(Clarity.Content) do
       ]
     end
 
-    @spec walk([module()], MapSet.t(module()), [{module(), module(), :compile | :runtime}]) ::
-            {[module()], [{module(), module(), :compile | :runtime}]}
-    defp walk([], seen, edges), do: {Enum.sort(seen), Enum.reverse(edges)}
+    @spec walk([module()], %{optional(module()) => true}, [
+            {module(), module(), :compile | :runtime}
+          ]) :: {[module()], [{module(), module(), :compile | :runtime}]}
+    defp walk([], seen, edges), do: {seen |> Map.keys() |> Enum.sort(), Enum.reverse(edges)}
 
     defp walk([module | queue], seen, edges) do
-      if MapSet.member?(seen, module) do
+      if Map.has_key?(seen, module) do
         walk(queue, seen, edges)
       else
         deps = if domain?(module), do: Info.deps(module), else: []
 
         walk(
           Enum.map(deps, &Info.dep_module/1) ++ queue,
-          MapSet.put(seen, module),
+          Map.put(seen, module, true),
           Enum.reduce(deps, edges, &[{module, Info.dep_module(&1), dep_type(&1)} | &2])
         )
       end
