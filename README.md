@@ -2,31 +2,30 @@
 
 [![CI](https://github.com/mbuhot/ash_boundary/actions/workflows/ci.yml/badge.svg)](https://github.com/mbuhot/ash_boundary/actions/workflows/ci.yml)
 
-Boundary declarations for [Ash](https://hexdocs.pm/ash) domains, built on top of
-[`boundary`](https://hex.pm/packages/boundary).
+AshBoundary is a Spark DSL extension for [Ash](https://hexdocs.pm/ash) domains.
+It derives a [`boundary`](https://hex.pm/packages/boundary) declaration from the domain DSL.
+The `boundary` compiler enforces the declaration on each build.
 
-`AshBoundary` is a Spark DSL extension for `Ash.Domain` that derives a `boundary`
-declaration from the DSL you already wrote, so that only a domain's intentional public
-API — its own module, plus any resource with a domain-level `define` — is reachable
-from outside code. Everything else under the domain's namespace is internal, and
-`boundary`'s compiler enforces that line on every build.
+- The domain module is public.
+- Each resource with a domain-level `define` is public.
+- All other modules in the domain's namespace are internal.
 
 ## Why
 
-Ash domains are easy to reach into from anywhere else in an application. Nothing stops
-one domain's resource from holding a direct relationship to another domain's resource,
-and that coupling is invisible right up until it's the refactor you can no longer do.
-`AshBoundary` makes it visible immediately, at compile time, and the fix it points
-toward is always the same one: replace the direct relationship with a **calculation**
-that calls a function on the other domain's exported interface, instead of reaching
-into its resource directly. See [the decoupling guide](guides/decoupling-with-calculations.md)
-for the full story, or jump straight to
-[`examples/03_decoupling_via_calculation`](examples/03_decoupling_via_calculation) for
-the runnable before/after.
+All application code can reference a domain's internal resources.
+A resource in one domain can hold a direct relationship to a resource in a different domain.
+This coupling makes future refactors difficult.
+
+AshBoundary reports this coupling at compile time.
+To remove the coupling, replace the direct relationship with a calculation.
+The calculation calls a function on the public interface of the other domain.
+
+See [the decoupling guide](guides/decoupling-with-calculations.md) and
+[`examples/03_decoupling_via_calculation`](examples/03_decoupling_via_calculation).
 
 ## Installation
 
-Add `ash_boundary` and `boundary` to your `mix.exs` deps:
+Add `ash_boundary` and `boundary` to the deps in `mix.exs`:
 
 ```elixir
 def deps do
@@ -39,8 +38,8 @@ end
 
 ## Usage
 
-Extend a domain with `AshBoundary` and, optionally, declare which other boundaries it's
-allowed to depend on:
+Add `AshBoundary` to the extensions of a domain.
+To permit dependencies on other boundaries, declare them in a `boundary` block:
 
 ```elixir
 defmodule MyApp.Blog do
@@ -56,25 +55,24 @@ defmodule MyApp.Blog do
       define :update_post, action: :update
     end
 
-    resource MyApp.Blog.Comment do
-      # no domain-level define, so it stays internal
-    end
+    resource MyApp.Blog.Comment
   end
 end
 ```
 
-`MyApp.Blog.Post` is now part of `MyApp.Blog`'s public API and may be referenced from
-anywhere; `MyApp.Blog.Comment` may only be referenced from inside `MyApp.Blog`'s own
-namespace; and `MyApp.Blog` itself may only reach into `MyApp.Accounts`, not any other
-domain.
+This configuration has these effects:
 
-### The one manual step: add the boundary compiler
+- `MyApp.Blog.Post` is public. All modules can reference it.
+- `MyApp.Blog.Comment` is internal. Only modules in the `MyApp.Blog` namespace can reference it.
+- `MyApp.Blog` can depend on the `MyApp.Accounts` boundary only.
 
-**This is the step every example and every report of "AshBoundary isn't doing
-anything" comes back to.** `AshBoundary` declares boundaries; it cannot enforce them,
-because enforcement lives in `Mix.Tasks.Compile.Boundary`, and a dependency can never
-add itself to your app's `:compilers` list. You have to do it yourself, once, in your
-own `mix.exs`:
+## Add the boundary compiler (required)
+
+AshBoundary declares the boundaries.
+The `Mix.Tasks.Compile.Boundary` compiler enforces them.
+A dependency cannot add itself to the `:compilers` list of your application.
+
+Add the compiler to the project configuration in `mix.exs`:
 
 ```elixir
 def project do
@@ -86,42 +84,28 @@ def project do
 end
 ```
 
-Skip this and there is no error, no warning, nothing to notice: every declaration is
-still computed and installed correctly, and not one violation is ever reported. If a
-reference you expected to be rejected compiles cleanly, check this first.
+If the `:compilers` list does not include `:boundary`, the build reports no violations.
+If an expected violation compiles without an error, do this check first.
 
 ## Examples
 
-Four small, standalone Mix projects under [`examples/`](examples), each demonstrating
-one part of the story:
+Four standalone Mix projects are in [`examples/`](examples):
 
-- [`01_basic_boundary`](examples/01_basic_boundary) — the smallest possible setup: one
-  domain, no `boundary do ... end` section at all, showing that AshBoundary's default
-  (no deps, strict enforcement) is already what most domains want.
-- [`02_exported_vs_internal`](examples/02_exported_vs_internal) — two resources that
-  both generate real, callable functions, exported completely differently: a
-  domain-level `define` makes a resource exported, a resource's own
-  `code_interface` does not.
-- [`03_decoupling_via_calculation`](examples/03_decoupling_via_calculation) — the core
-  pattern this library exists for: a direct cross-domain relationship (shown failing to
-  compile) replaced by a calculation that calls the other domain's exported interface
-  (shown working end to end).
-- [`04_deliberate_violation`](examples/04_deliberate_violation) — a domain that reaches
-  straight into a sibling domain's internal resource, both by a plain function call and
-  by an Ash relationship, with a real `mix test` asserting that both are caught by
-  `mix compile --warnings-as-errors`.
+- [`01_basic_boundary`](examples/01_basic_boundary): one domain with the default configuration. The default configuration has zero deps and strict enforcement.
+- [`02_exported_vs_internal`](examples/02_exported_vs_internal): a domain-level `define` exports a resource. A resource-level `code_interface` keeps the resource internal.
+- [`03_decoupling_via_calculation`](examples/03_decoupling_via_calculation): a calculation replaces a cross-domain relationship.
+- [`04_deliberate_violation`](examples/04_deliberate_violation): a test shows that `mix compile --warnings-as-errors` catches two boundary violations.
 
-Each example's own README walks through what it shows, how to run it, and how to
-reproduce its violation (or, for `04`, how the violation is proven automatically).
+Each example has a README with run instructions.
 
 ## Documentation
 
-Full API docs, the DSL cheat sheet for `boundary do ... end`, and the decoupling guide
-are published at [hexdocs.pm/ash_boundary](https://hexdocs.pm/ash_boundary) once this
-package is released, and in the meantime at
-[mbuhot.github.io/ash_boundary](https://mbuhot.github.io/ash_boundary/), built from
-`main` by [`.github/workflows/docs.yml`](.github/workflows/docs.yml). Generate them
-locally with:
+The documentation is published at
+[mbuhot.github.io/ash_boundary](https://mbuhot.github.io/ash_boundary/).
+After the package release, it is published at
+[hexdocs.pm/ash_boundary](https://hexdocs.pm/ash_boundary).
+
+To generate the documentation locally, run:
 
 ```
 mix docs
@@ -129,11 +113,8 @@ mix docs
 
 ## Status
 
-Pre-1.0. The DSL extension, its transformers, and the required compile-time validation
-(`AshBoundary.Transformers.ValidateDomain`) are in place and covered by tests, along
-with the four sample projects above. The public API may still change before a `1.0`
-release.
+Pre-1.0. The public API can change before the 1.0 release.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

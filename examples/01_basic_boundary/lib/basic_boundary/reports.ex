@@ -1,12 +1,12 @@
 defmodule BasicBoundary.Reports do
   @moduledoc """
-  Lives outside `BasicBoundary.Blog`'s namespace entirely, and calls into it only
-  through the domain's exported code interface — the happy path `AshBoundary`
-  is meant to leave completely unaffected.
+  This module lives outside `BasicBoundary.Blog`'s namespace. It calls into
+  the domain only through its exported code interface. This is the happy path
+  `AshBoundary` leaves unaffected.
 
-  Compare `test/basic_boundary/reports_test.exs`, which runs this for real (creates a
-  post through `BasicBoundary.Blog.create_post!/1` and reads it back through
-  `BasicBoundary.Blog.get_post!/1`), rather than merely asserting the module compiles.
+  `test/basic_boundary/reports_test.exs` runs this code. It creates a post
+  through `BasicBoundary.Blog.create_post!/1` and reads it back through
+  `BasicBoundary.Blog.get_post!/1`.
   """
 
   alias BasicBoundary.Blog

@@ -1,17 +1,15 @@
 defmodule DeliberateViolation do
   @moduledoc """
-  The application's root boundary, declared with plain `use Boundary` rather than
-  `AshBoundary` — this module is not an `Ash.Domain`, just this app's top namespace.
+  This is the app's root boundary. It uses plain `use Boundary`, not `AshBoundary`.
+  This module is not an `Ash.Domain`. It is the app's top namespace.
 
-  See `examples/01_basic_boundary`'s `BasicBoundary` module for the full explanation of
-  why this is mandatory: `boundary` expects every module in the app to land in *some*
-  boundary, `DeliberateViolation.Accounting` and `DeliberateViolation.Billing` only carve
-  out their own subtrees, and skipping a root claim like this one does not fail loudly —
-  it silently disables the forbidden-reference check for whatever is left unclassified.
+  See the `BasicBoundary` module in examples/01_basic_boundary for the full explanation.
+  The `boundary` library requires every module in the app to belong to a boundary.
+  `DeliberateViolation.Accounting` and `DeliberateViolation.Billing` cover only their own subtrees.
+  A missing root boundary disables the forbidden-reference check for every unclassified module, and does so silently.
 
-  This is the single most important line in this example, more so than in 01–03: sample
-  project 4's entire reason to exist is a caught violation, and a missing root boundary
-  here would mean the violation demonstrated below silently proves nothing.
+  This module matters most in this example. The example exists to show a caught violation.
+  A missing root boundary would let that violation pass unproven.
   """
 
   use Boundary

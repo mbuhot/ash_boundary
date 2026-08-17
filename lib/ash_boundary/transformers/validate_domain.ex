@@ -2,49 +2,52 @@ defmodule AshBoundary.Transformers.ValidateDomain do
   @moduledoc """
   Rejects, at compile time, domains that `boundary` could not correctly describe.
 
-  This transformer never touches the DSL state — it only validates and returns errors.
-  It runs before `AshBoundary.Transformers.DeclareBoundary`, so nothing is installed on a
-  domain that has already been reported as invalid.
+  This transformer only validates. It never modifies the DSL state. It runs
+  before `AshBoundary.Transformers.DeclareBoundary`, so nothing installs on a
+  domain that this transformer has already reported as invalid.
 
   ## Checks
 
-    * **No hand-written `use Boundary`.** Both `use Boundary` and AshBoundary define the
-      declaration from a `@before_compile` hook, and the one that runs last silently
-      wins, so which declaration a domain ends up with would depend on the order the two
-      `use` calls appear in. Detected by looking for `Boundary.Definition` among the
-      module's registered `@before_compile` hooks.
+    * No hand-written `use Boundary`. Both `use Boundary` and AshBoundary
+      install the declaration from a `@before_compile` hook. Whichever hook
+      runs last wins silently, so the resulting declaration depends on the
+      order the two `use` calls appear in. This check looks for
+      `Boundary.Definition` among the module's registered `@before_compile`
+      hooks.
 
-    * **Resources are nested under the domain.** `Boundary.Mix.Classifier` assigns
-      modules to boundaries by name nesting alone, so a resource outside the domain's
-      namespace can neither be exported by it nor protected by it.
-      `AshBoundary.Declaration.declare/2` does raise for an *exported* resource in that
-      position, but only with a generic `ArgumentError` about namespaces, and it says
-      nothing at all about unexported ones. Both cases are caught here instead.
+    * Resources are nested under the domain. `Boundary.Mix.Classifier` assigns
+      modules to boundaries by name nesting alone. A resource outside the
+      domain's namespace cannot be exported by it. `boundary` cannot protect
+      that resource either. `AshBoundary.Declaration.declare/2` raises for an
+      exported resource in that position, but reports only a generic
+      `ArgumentError` about namespaces. It reports nothing for an unexported
+      resource in that position. This check catches both cases.
 
-    * **Every `deps` entry is a boundary.** Otherwise there is nothing for the dependency
-      to be checked against. Both `Ash.Domain`s extended with AshBoundary and modules
-      calling `use Boundary` by hand are accepted — AshBoundary is not privileged, since
-      the check is for `boundary`'s own persisted definition attribute.
+    * Every `deps` entry is a boundary. Otherwise there is nothing to check the
+      dependency against. This check accepts both `Ash.Domain`s extended with
+      AshBoundary and modules that call `use Boundary` directly, because the
+      check reads `boundary`'s own persisted definition attribute.
 
-  ## Why this is a transformer and not a `Spark.Dsl.Verifier`
+  ## Why this is a transformer, not a `Spark.Dsl.Verifier`
 
-  A verifier would be the natural home for the `deps` check: verifiers run after the
-  module is compiled and are documented as the safe place to reference other modules. But
-  Spark runs verifiers from Elixir's `@after_verify` hook, and an exception raised there
-  is reported by `Module.ParallelChecker` as a *warning*. The module is still written,
-  and `mix compile` still exits successfully. A verifier therefore cannot deliver the
-  hard compile-time failure this check is required to produce, so all three checks live
-  here.
+  A verifier looks like the natural home for the `deps` check: verifiers run
+  after the module compiles and are documented as the safe place to reference
+  other modules. Spark runs verifiers from Elixir's `@after_verify` hook, and
+  `Module.ParallelChecker` reports an exception raised there as a warning. The
+  module still compiles, and `mix compile` still exits successfully. A
+  verifier cannot deliver the hard compile-time failure this check must
+  produce, so all three checks live in this transformer.
 
-  The trade-off is that answering "is this dep a boundary?" needs
-  `Code.ensure_compiled/1`, which blocks until the dep is compiled and so introduces a
-  compile-time dependency from a domain to each of its declared deps. Recompiling a
-  domain when a domain it depends on changes is reasonable in itself.
+  Answering "is this dep a boundary?" requires `Code.ensure_compiled/1`, which
+  blocks until the dep compiles. This introduces a compile-time dependency
+  from a domain to each of its declared deps. Recompiling a domain when a dep
+  changes is expected behaviour.
 
-  Two domains listing each other in `deps` does *not* hang the build: Elixir's parallel
-  compiler detects the cycle, breaks it, and hands one of the two `{:error, :unavailable}`
-  from `Code.ensure_compiled/1`, which is reported here as the cycle it is and fails the
-  compilation. Such a pair is already a cycle error as far as `boundary` is concerned.
+  Two domains listing each other in `deps` does not hang the build. Elixir's
+  parallel compiler detects the cycle, breaks it, and returns
+  `{:error, :unavailable}` from `Code.ensure_compiled/1` for one of the two
+  domains. This transformer reports that result as a cycle error and fails the
+  compilation. `boundary` already treats such a pair as a cycle error.
   """
 
   use Spark.Dsl.Transformer

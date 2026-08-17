@@ -1,17 +1,18 @@
 defmodule DeliberateViolation.Billing.Invoice do
   @moduledoc """
-  An invoice, exported by `DeliberateViolation.Billing` via its domain-level `define`s.
+  `DeliberateViolation.Billing` exports this invoice through its domain-level
+  `define`s.
 
-  It holds `ledger_entry_id`, a plain `:uuid` attribute — not a relationship — recording
-  which ledger entry it is associated with. It has no reference to
-  `DeliberateViolation.Accounting.LedgerEntry`, the module, at all: compare this to
-  `violation/billing/invoice.ex`, which is this same resource with one field changed to
-  a `belongs_to`, and does not compile.
+  It holds `ledger_entry_id`, a plain `:uuid` attribute. This attribute records which
+  ledger entry the invoice is associated with. It is not a relationship. This resource
+  has no reference to the `DeliberateViolation.Accounting.LedgerEntry` module at all.
+  Compare this resource to `violation/billing/invoice.ex`. That resource changes one
+  field to a `belongs_to` relationship, and it does not compile.
 
-  The `:ledger_total` calculation is the clean half of this example's side-by-side: it
-  reaches into `DeliberateViolation.Accounting` through
+  The `:ledger_total` calculation is the clean half of this example's side-by-side
+  comparison. It reaches into `DeliberateViolation.Accounting` through
   `DeliberateViolation.Billing.Calculations.LedgerTotal`, which calls the domain's
-  *exported* `ledger_total!/0` — see that module's moduledoc for the direct comparison
+  exported `ledger_total!/0`. See that module's moduledoc for the direct comparison
   with the deliberate violation.
   """
 

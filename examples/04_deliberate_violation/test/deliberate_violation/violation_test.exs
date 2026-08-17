@@ -53,7 +53,7 @@ defmodule DeliberateViolation.ViolationTest do
     assert output =~ """
            warning: forbidden reference to DeliberateViolation.Accounting.LedgerEntry
              (module DeliberateViolation.Accounting.LedgerEntry is not exported by its owner boundary DeliberateViolation.Accounting)
-             violation/billing/invoice.ex:36\
+             violation/billing/invoice.ex:35\
            """
 
     # The call-style violation: `violation/billing/ledger_entry_caller.ex` calls

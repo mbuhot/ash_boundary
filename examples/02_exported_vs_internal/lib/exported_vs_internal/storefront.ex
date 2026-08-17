@@ -1,13 +1,12 @@
 defmodule ExportedVsInternal.Storefront do
   @moduledoc """
-  Lives outside `ExportedVsInternal.Catalog`'s namespace entirely, and calls into it
-  only through the domain's exported code interface — the happy path `AshBoundary`
-  is meant to leave completely unaffected, same as `BasicBoundary.Reports` in sample
-  project 1.
+  Sits entirely outside `ExportedVsInternal.Catalog`'s namespace. Calls into `Catalog`
+  only through the domain's exported code interface. `AshBoundary` leaves this call path
+  unaffected, the same as `BasicBoundary.Reports` in example 1.
 
-  Nothing here can reach `ExportedVsInternal.Catalog.InternalPricing` — not its module
-  directly, and not its own `code_interface` functions either, despite those being
-  real, generated, callable functions. See the README for that reproduced as a real
+  This module cannot reach `ExportedVsInternal.Catalog.InternalPricing`, either its
+  module directly or its own `code_interface` functions, even though those functions
+  are real, generated, and callable. See the README for that reproduced as a real
   compiler warning.
   """
 

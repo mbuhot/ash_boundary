@@ -1,15 +1,14 @@
 defmodule DeliberateViolation.Accounting.Summary do
   @moduledoc """
-  `DeliberateViolation.Accounting`'s entire public API: a resource with no data layer and
-  no attributes, holding two generic actions over the internal
+  This resource is `DeliberateViolation.Accounting`'s entire public API. It has no data
+  layer and no attributes. It holds two generic actions over the internal
   `DeliberateViolation.Accounting.LedgerEntry` resource.
 
-  It is the only resource this domain exports (via the domain-level `define`s in
-  `DeliberateViolation.Accounting`), which is the point: other domains get answers — an
-  id, a running total — and never a `LedgerEntry` struct, an attribute name, or a query
-  against the ledger's own storage. See `examples/03_decoupling_via_calculation`'s
-  `Directory` resource for the same shape, applied there to customer data instead of
-  ledger entries.
+  The domain-level `define`s in `DeliberateViolation.Accounting` export only this
+  resource. Other domains receive an id or a running total. They never receive a
+  `LedgerEntry` struct, an attribute name, or a query against the ledger's own storage.
+  See the `Directory` resource in `examples/03_decoupling_via_calculation` for the same
+  shape, applied there to customer data instead of ledger entries.
   """
 
   use Ash.Resource, domain: DeliberateViolation.Accounting

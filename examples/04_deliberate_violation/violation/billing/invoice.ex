@@ -1,19 +1,18 @@
 defmodule DeliberateViolation.Violation.Billing.Invoice do
   @moduledoc """
-  **DELIBERATE VIOLATION — not compiled by any normal build. See `mix.exs` and the
-  README.**
+  **DELIBERATE VIOLATION. No normal build compiles this file. See `mix.exs`
+  and the README.**
 
-  Identical to the shipped `DeliberateViolation.Billing.Invoice`, except
-  `ledger_entry_id` — a plain attribute there — is a `belongs_to` relationship here,
-  pointed directly at `DeliberateViolation.Accounting.LedgerEntry`.
+  This resource is identical to the shipped `DeliberateViolation.Billing.Invoice`.
+  `ledger_entry_id` is a plain attribute there. Here it is a `belongs_to`
+  relationship, pointed directly at `DeliberateViolation.Accounting.LedgerEntry`.
 
-  This is the **alias-style** violation: a relationship names a module and calls nothing
-  on it, which is exactly the kind of reference `boundary` does not check by default
-  (`check: [aliases: false]` is its documented default). AshBoundary turns alias
-  checking on for every domain it declares, which is the only reason this line is
-  caught at all — see this example's README, and
-  `examples/03_decoupling_via_calculation`'s "Alias checking is on by default" section
-  for the same point made in full.
+  This is the alias-style violation. A relationship names a module and calls nothing
+  on it. `boundary` does not check this kind of reference by default: its documented
+  default is `check: [aliases: false]`. AshBoundary turns alias checking on for every
+  domain it declares. This is the only reason this line is caught at all. See this
+  example's README, and the "Alias checking is on by default" section in
+  `examples/03_decoupling_via_calculation` for the same point made in full.
   """
 
   use Ash.Resource,

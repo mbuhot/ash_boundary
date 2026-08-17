@@ -1,16 +1,14 @@
 defmodule ExportedVsInternal.Catalog.InternalReports do
   @moduledoc """
-  Lives *inside* `ExportedVsInternal.Catalog`'s own namespace and calls
-  `InternalPricing`'s resource-level code interface directly — `record!/1` then
-  `calculate!/1`. `boundary` classifies this module as belonging to the
-  `ExportedVsInternal.Catalog` boundary (it nests under `ExportedVsInternal.Catalog.*`),
-  the same boundary that owns `InternalPricing`, so the reference is never even a
-  candidate for a violation: `boundary` only checks references that *cross* a boundary
-  line, and a module calling another module in its own boundary never crosses one.
+  Sits inside `ExportedVsInternal.Catalog`'s own namespace. Calls `InternalPricing`'s
+  resource-level code interface directly, `record!/1` then `calculate!/1`. `boundary`
+  classifies this module as part of the `ExportedVsInternal.Catalog` boundary, because
+  it nests under `ExportedVsInternal.Catalog.*`. This is the same boundary that owns
+  `InternalPricing`. The reference stays inside one boundary, so it is never a candidate
+  for a violation. `boundary` checks only references that cross a boundary line.
 
-  This is the "internal resource's interface still works" half of what sample project 2
-  demonstrates — compare `ExportedVsInternal.Storefront`, which lives *outside* this
-  namespace and is restricted to the domain's exported interface only.
+  Compare `ExportedVsInternal.Storefront`, which sits outside this namespace and calls
+  only the domain's exported interface.
   """
 
   alias ExportedVsInternal.Catalog.InternalPricing

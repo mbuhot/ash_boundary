@@ -1,28 +1,27 @@
 defmodule DecouplingViaCalculation.Antipattern.Orders.Order do
   @moduledoc """
-  **BEFORE state — not compiled by any normal build. See `mix.exs` and the README.**
+  This module is part of the BEFORE state. No normal build compiles it.
+  See `mix.exs` and the README.
 
-  The anti-pattern itself, in one `belongs_to`: an order in one domain holding a live Ash
-  relationship to a resource owned by another domain.
+  This file holds the anti-pattern: one `belongs_to`. An order in one domain
+  holds a live Ash relationship to a resource in another domain.
 
-  It is the natural thing to write, and it works fine right up until somebody wants to
-  change `Customer`. What this file actually buys:
+  This is a natural thing to write. It works until someone changes `Customer`.
+  The relationship costs four things:
 
-    * `DecouplingViaCalculation.Antipattern.Customers.Customer` is named here, at compile
-      time, so `Orders` cannot be compiled — or reasoned about — without it.
-    * `Order`'s queries now reach into another domain's data layer. `load: [:customer]`
-      below is `Orders` issuing a read against customer storage, so the two resources'
-      storage decisions are joined: `Customer` cannot move to another data layer, or
-      behind a service call, without breaking this query.
-    * `Order` receives whole `Customer` structs, so every consumer of an order can now
-      read every customer attribute, and any of them may quietly come to depend on one.
-      Renaming `family_name` becomes a cross-domain change.
-    * The entanglement is mutual and grows: the natural next step is
-      `has_many :orders, ...Antipattern.Orders.Order` on `Customer`, which is the same
-      violation in the other direction (and, this time, from a domain that has declared
-      no `deps` at all).
+    * `DecouplingViaCalculation.Antipattern.Customers.Customer` is named here at
+      compile time. `Orders` cannot compile without it.
+    * `Order`'s queries reach into another domain's data layer. `load: [:customer]`
+      below issues a read against customer storage. `Customer` cannot change its
+      data layer, or move behind a service call, without breaking this query.
+    * `Order` receives whole `Customer` structs. Every consumer of an order can
+      read every customer attribute. Renaming `family_name` becomes a
+      cross-domain change.
+    * The entanglement grows in both directions. The next step is
+      `has_many :orders, ...Antipattern.Orders.Order` on `Customer`. This domain
+      has declared no `deps` at all.
 
-  None of that is hypothetical bookkeeping — the compiler refuses it. See the README.
+  The compiler refuses this file. See the README.
   """
 
   use Ash.Resource,

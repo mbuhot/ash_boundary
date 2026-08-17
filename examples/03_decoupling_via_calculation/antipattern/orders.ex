@@ -1,21 +1,22 @@
 defmodule DecouplingViaCalculation.Antipattern.Orders do
   @moduledoc """
-  **BEFORE state — not compiled by any normal build. See `mix.exs` and the README.**
+  This module is part of the BEFORE state. No normal build compiles it.
+  See `mix.exs` and the README.
 
-  Note that this domain does everything right on its own terms. It declares the
-  cross-domain dependency it has, in exactly the reviewable line `AshBoundary` asks for:
+  This domain declares its cross-domain dependency correctly:
 
       boundary do
         deps [DecouplingViaCalculation.Antipattern.Customers]
       end
 
-  Declaring the dep is necessary and not sufficient. It grants access to what
-  `DecouplingViaCalculation.Antipattern.Customers` *exports* — which is only the domain
-  module — and the relationship in
-  `DecouplingViaCalculation.Antipattern.Orders.Order` reaches past that, straight at the
-  `Customer` resource module. That is the violation, and no `deps` entry can make it go
-  away: the only ways out are to export `Customer` wholesale, or to stop reaching for it
-  (the shipped `DecouplingViaCalculation.Orders`).
+  This declaration is necessary. It is not sufficient.
+  The declaration grants access only to what
+  `DecouplingViaCalculation.Antipattern.Customers` exports: the domain module.
+  The relationship in `DecouplingViaCalculation.Antipattern.Orders.Order` reaches
+  past that export and references the `Customer` resource module directly.
+  This is the violation. No `deps` entry fixes it.
+  Two fixes exist: export `Customer` wholesale, or remove the relationship.
+  The shipped `DecouplingViaCalculation.Orders` removes the relationship.
   """
 
   use Ash.Domain, extensions: [AshBoundary]

@@ -1,13 +1,14 @@
 defmodule DecouplingViaCalculation.Antipattern.Customers.Customer do
   @moduledoc """
-  **BEFORE state — not compiled by any normal build. See `mix.exs` and the README.**
+  This module is part of the BEFORE state. No normal build compiles it.
+  See `mix.exs` and the README.
 
-  Identical in spirit to the shipped `DecouplingViaCalculation.Customers.Customer`: an
-  internal resource, with its own private notion of what a display name is.
+  This resource matches the shipped `DecouplingViaCalculation.Customers.Customer`
+  in purpose. It is an internal resource with its own display-name logic.
 
-  The difference is what happens to it. Here, another domain's resource points a
-  relationship at this module, so this module's name, its attributes and its struct all
-  become part of another domain's compile-time reality.
+  Another domain's resource points a relationship at this module. This exposes
+  the module's name, its attributes, and its struct to that domain at compile
+  time.
   """
 
   use Ash.Resource,

@@ -1,23 +1,28 @@
 defmodule AshBoundary.Transformers.DeclareBoundary do
   @moduledoc """
-  Computes the domain's boundary declaration and installs it on the domain module.
+  Computes the domain's boundary declaration and installs it on the domain
+  module.
 
-  `deps` are taken verbatim from the `boundary` section — they are the user's explicit
-  admission of what this domain may reach. `exports` are computed: the domain module,
-  plus every resource carrying at least one domain-level `define`. A resource whose only
-  code interface lives on the resource module itself stays internal, which is the
-  distinction the whole extension rests on.
+  `deps` are taken verbatim from the `boundary` section. They are the user's
+  explicit admission of what this domain may reach. AshBoundary computes
+  `exports`: the domain module, plus every resource carrying at least one
+  domain-level `define`. A resource whose only code interface lives on the
+  resource module itself stays internal. This distinction is the basis of the
+  whole extension.
 
-  `check` is not taken from the DSL either. Alias references are checked by default,
-  because an Ash relationship *is* an alias reference and `boundary` does not check those
-  unless asked — see `AshBoundary.Declaration.check_opts/0`, which also explains why the
-  project-level `check` config has to be read and merged here rather than replaced.
+  `check` does not come from the DSL either. AshBoundary checks alias
+  references by default, because an Ash relationship is an alias reference and
+  `boundary` does not check alias references unless asked. See
+  `AshBoundary.Declaration.check_opts/0`, which also explains why this
+  transformer reads and merges the project-level `check` config.
 
-  Installation goes through `AshBoundary.Declaration.declare/2` rather than injecting
-  `use Boundary`, which cannot work from a transformer — see that module's docs.
+  Installation goes through `AshBoundary.Declaration.declare/2`. Injecting
+  `use Boundary` from a transformer does not work. See that module's docs for
+  the reason.
 
-  Runs after `AshBoundary.Transformers.ValidateDomain`, so anything `boundary` could not
-  express has already been reported with a better message than it would produce.
+  This transformer runs after `AshBoundary.Transformers.ValidateDomain`.
+  ValidateDomain already reports anything `boundary` could not express, with a
+  clearer message.
   """
 
   use Spark.Dsl.Transformer
