@@ -42,7 +42,7 @@ end
 
 ## Usage
 
-Add `AshBoundary` to the extensions of a domain. Declare dependencies from other domains in a `boundary` block:
+Add `AshBoundary` to the extensions of a domain. Declare dependencies on other domains, and any public module that is not a resource, in a `boundary` block:
 
 ```elixir
 defmodule MyApp.Blog do
@@ -50,6 +50,7 @@ defmodule MyApp.Blog do
 
   boundary do
     deps [MyApp.Accounts]
+    exports [MyApp.Blog.PostStatus]
   end
 
   resources do
@@ -66,6 +67,7 @@ end
 This configuration has these effects:
 
 - `MyApp.Blog.Post` is public. All modules can reference it.
+- `MyApp.Blog.PostStatus`, an `Ash.Type.Enum`, is public.
 - `MyApp.Blog.Comment` is internal. Only modules in the `MyApp.Blog` namespace can reference it.
 - `MyApp.Blog` can depend on the `MyApp.Accounts` boundary only.
 

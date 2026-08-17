@@ -13,6 +13,7 @@ AshBoundary derives the `boundary` declaration from the domain DSL:
 
       boundary do
         deps [MyApp.Accounts]
+        exports [MyApp.Blog.PostStatus]
       end
 
       resources do

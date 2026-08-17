@@ -10,6 +10,7 @@ defmodule AshBoundary do
 
         boundary do
           deps [MyApp.Accounts]
+          exports [MyApp.Blog.PostStatus]
         end
 
         resources do
