@@ -42,8 +42,8 @@ declaration would be the right call. Across a domain line it has two effects:
   boundary, or a required read filter in `Customers` breaks a query that lives
   in `Orders`.
 - `Orders` receives whole `Customer` structs, and so does everything
-  downstream of an order. Each field read becomes load-bearing, so a field
-  rename stops being a local change.
+  downstream of an order. Every field they read is a field `Customers` cannot
+  rename without breaking them.
 - The coupling grows. The natural next step is `has_many :orders` on
   `Customer`. With both directions in place, the two domains are one domain
   with two names.

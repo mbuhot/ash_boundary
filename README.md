@@ -81,7 +81,6 @@ This configuration has these effects:
 
 AshBoundary declares the boundaries.
 The `Mix.Tasks.Compile.Boundary` compiler enforces them.
-A dependency cannot add itself to the `:compilers` list of your application.
 
 Add the compiler to the project configuration in `mix.exs`:
 
@@ -95,9 +94,6 @@ def project do
 end
 ```
 
-If the `:compilers` list does not include `:boundary`, the build reports no violations.
-If an expected violation compiles without an error, do this check first.
-
 ## Examples
 
 Five standalone Mix projects are in [`examples/`](examples):
@@ -106,15 +102,15 @@ Five standalone Mix projects are in [`examples/`](examples):
 - [`02_exported_vs_internal`](examples/02_exported_vs_internal): a domain-level `define` exports a resource. A resource-level `code_interface` keeps the resource internal.
 - [`03_decoupling_via_calculation`](examples/03_decoupling_via_calculation): a calculation replaces a cross-domain relationship.
 - [`04_deliberate_violation`](examples/04_deliberate_violation): a test shows that `mix compile --warnings-as-errors` catches two boundary violations.
-- [`05_phoenix_liveview`](examples/05_phoenix_liveview): a Phoenix LiveView app. The web layer can pattern-match resource structs and call functions declared on the domain. The web layer cannot call `Ash.read!/1`, `Ash.load!/2`, or match an `%Ash.Error.Invalid{}` struct. This example needs no new AshBoundary feature. It combines the deps and exports mechanism with plain `boundary`'s external app checks: `use Boundary, type: :strict, check: [aliases: true]` on the web layer's own boundary. No `check: [apps: [...]]` allowlist is needed — `type: :strict` already checks every application on its own.
+- [`05_phoenix_liveview`](examples/05_phoenix_liveview): a Phoenix LiveView web layer that reads structs and calls domain functions, but cannot call `Ash` itself.
 
 Each example has a README with run instructions.
 
 ## Documentation
 
-The documentation is published at
+Latest `main` is published at
 [mbuhot.github.io/ash_boundary](https://mbuhot.github.io/ash_boundary/).
-After the package release, it is published at
+Docs for versioned releases will be available at
 [hexdocs.pm/ash_boundary](https://hexdocs.pm/ash_boundary).
 
 To generate the documentation locally, run:

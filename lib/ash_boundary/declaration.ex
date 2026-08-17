@@ -54,8 +54,7 @@ defmodule AshBoundary.Declaration do
   ## Consuming apps must add the boundary compiler themselves
 
   Declaring a boundary does not enforce one. Enforcement lives entirely in
-  `Mix.Tasks.Compile.Boundary`. A dependency cannot add itself to a downstream
-  app's `:compilers` list. Every app using AshBoundary must edit its own
+  `Mix.Tasks.Compile.Boundary`. Every app using AshBoundary must edit its own
   `mix.exs`:
 
       def project do
@@ -65,8 +64,6 @@ defmodule AshBoundary.Declaration do
         ]
       end
 
-  If the `:compilers` list does not include `:boundary`, the build reports no
-  violations, even though the declarations still install correctly.
   """
 
   alias Boundary.Mix.CompilerState

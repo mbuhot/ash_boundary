@@ -1,39 +1,38 @@
 # Coupling Scenarios
 
 AshBoundary draws a compile-time line around each Ash domain. This guide shows
-five common ways application code couples across that line, and the domain
-shape that makes each one searchable or rejected.
+five common ways application code reaches across that line, and how to
+restructure each one.
 
 Each scenario has the same three parts:
 
-- a question a developer asks in a grown codebase,
-- the wide contract that makes the question hard to answer,
-- the narrow contract that answers it with a search, plus the check the
-  compiler applies.
+- a question that is hard to answer in a large codebase,
+- the design that makes it hard to answer,
+- the design that makes it easy, and what the compiler reports.
 
-## Contracts and their size
+## How much do two domains need to know about each other?
 
-Two domains that communicate share some knowledge. That shared knowledge is a
-contract, and some coupling is the price of every contract. The size of the
-contract decides the cost:
+Two domains that talk to each other share some knowledge. The less they share,
+the easier each one is to change:
 
-- A wide contract (a resource struct, a relationship, a table) shows every
-  detail to every consumer. Each detail becomes load-bearing. Change becomes
-  hard.
-- A narrow contract (a few exported functions over a stable abstraction) lets
-  the implementation change in isolation.
+- Share a resource struct, a relationship, or a database table, and every
+  consumer can depend on every field. Changing any field can break a caller
+  you did not know about.
+- Share a few functions instead, and you can rewrite everything behind them.
 
 ## The search test
 
-One practical test judges every scenario. Two searches must explain a
-resource's state:
+Ask one question about any coupling: to find every piece of code that can
+change a resource, how many places must you look?
 
-1. Search the resource's own domain for its actions, changes, and hooks.
-2. Search for the callers of the domain's exported code interface.
+Two searches should be enough:
 
-When the test passes, those two searches find the code responsible for each
-state a resource can reach. When a coupling breaks the test, the writers and
-the rules hide in distant parts of the codebase.
+1. The resource's own domain, for its actions, changes, and hooks.
+2. The callers of the domain's exported code interface.
+
+If those two searches find everything, the coupling is acceptable. If code
+somewhere else can also change the resource, that code is hard to find, and
+the next person to change the resource will miss it.
 
 ## Scenario 1: "Who cancelled this order?"
 
@@ -63,7 +62,7 @@ The order reached the `:cancelled` state through a `Support` action:
 
 The search test fails.
 
-### The narrow contract
+### The fix
 
 - Replace the relationship with a plain attribute: `attribute :order_id, :uuid`.
 - Export a cancel action from `Orders` with a domain-level `define`.
@@ -82,10 +81,10 @@ is an alias reference.
 ## Scenario 2: "We want to rename `family_name`"
 
 Consumers receive `%Customer{}` structs and read fields from them. Every field
-read in every domain is load-bearing. A rename inside `Customers` breaks
-distant code at runtime.
+any domain reads is a field you cannot rename. A rename inside `Customers`
+breaks distant code at runtime.
 
-### The narrow contract
+### The fix
 
 Export one function that answers the caller's question:
 
@@ -110,7 +109,7 @@ project.
 Policies across the application match on `%MyApp.Accounts.User{}` and read its
 fields. The `User` resource becomes a contract with the whole codebase.
 
-### The narrow contract
+### The fix
 
 Define an explicit actor struct with three fields, as its own small boundary:
 
@@ -198,7 +197,7 @@ second entry point (a JSON API, a background job, an admin page) either
 re-implements the rule or skips it. A search inside the `Orders` domain does
 not find the rule. The search test fails.
 
-### The narrow contract
+### The fix
 
 Encode the rule as a named action on the resource:
 
@@ -234,7 +233,7 @@ every path through Ash enforces them.
 
 ## Summary
 
-| Scenario | Wide contract | Narrow contract | Compiler check |
+| Scenario | Shares too much | Shares just enough | Compiler check |
 | --- | --- | --- | --- |
 | Side-channel writes | a cross-domain relationship | an exported action function | forbidden reference on the `belongs_to` |
 | Field renames | a resource struct | a purpose-built function | forbidden reference on the struct match |
@@ -242,5 +241,5 @@ every path through Ash enforces them.
 | Mutual knowledge | `deps` in both directions | `deps` in one direction | a cycle error |
 | Logic in the web layer | generic CRUD defines | intention-revealing actions | the `define` list bounds the exported surface |
 
-Each narrow contract keeps the search test true: the domain plus the callers
-of its exported interface explain every state a resource can reach.
+In each fix, two searches still find every piece of code that can change the
+resource: the domain itself, and the callers of the functions it exports.

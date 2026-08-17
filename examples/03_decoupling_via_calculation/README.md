@@ -86,9 +86,9 @@ in the diff that adds it:
   filter or preparation to its reads, without breaking a query that lives in
   `Orders`.
 - **`Orders` now receives whole `Customer` structs**, and so does everything
-  downstream of an order. Code with no business seeing a customer attribute
-  can now reach it, and any of it may quietly become load-bearing. Renaming
-  `family_name` stops being a local change.
+  downstream of an order. Code with no business seeing a customer attribute can
+  now read it, and every field it reads is a field `Customers` cannot rename.
+  Renaming `family_name` stops being a local change.
 - **The entanglement is mutual, and it grows.** The natural next step is
   `has_many :orders, ...Orders.Order` on `Customer`. That is the same
   violation in the other direction, from a domain that declared no `deps` at
