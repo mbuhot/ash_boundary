@@ -405,8 +405,3 @@ this gate never compiles it, which is the whole reason the BEFORE state can
 ship as real code. `MIX_ENV=antipattern mix compile` is expected to fail, so
 it is not part of the gate: a green result there would mean the violation
 went uncaught.
-
-See `examples/01_basic_boundary/README.md`'s "Conventions for other examples"
-section for the full set of structural conventions this example follows
-(standalone Mix project, committed `mix.lock`, mandatory root `use Boundary`
-module, and so on). They apply here without modification.

@@ -71,7 +71,7 @@ This configuration has these effects:
 
 ## Examples
 
-See the [`examples/`](examples) directory. [`05_phoenix_liveview`](examples/05_phoenix_liveview) is the most realistic example.
+See the [`examples/`](examples) directory. [`04_phoenix_liveview`](examples/04_phoenix_liveview) is the most realistic example.
 
 
 ## Documentation

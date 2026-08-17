@@ -122,6 +122,3 @@ Run this from within this directory:
 ```
 mix deps.get && mix format --check-formatted && mix compile --warnings-as-errors && mix test
 ```
-
-See `examples/01_basic_boundary/README.md`'s "Conventions for other examples" section for the
-full set of structural conventions this example follows.

@@ -570,10 +570,3 @@ Both are deliberate.
   module.** `Example` is both. See "Why the domain is the top-level module". Every
   module still lands in a boundary, which is the property the earlier examples'
   root boundary exists to provide.
-
-See the "Conventions for other examples" section in
-`examples/01_basic_boundary/README.md` for the conventions this example follows
-without change. They are the standalone Mix project, the committed `mix.lock`,
-`Ash.DataLayer.Ets`, the `compilers: [:boundary] ++ Mix.compilers()` entry that
-the consuming app declares itself, and the absence of any project-level
-`boundary: [default: [check: ...]]` configuration.

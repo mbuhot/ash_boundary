@@ -206,13 +206,9 @@ compile --warnings-as-errors` and reads the output. That is the right amount
 of ceremony there, because example 3's point is the decoupling pattern; the
 antipattern build failing is supporting evidence, not the point itself.
 
-Here, the point of the entire example is that a violation gets caught. A
-manual reproduction step would leave the one thing this sample project exists
-to demonstrate as the one thing nothing automatically checks. `examples/01_basic_boundary`'s
-README flags this gap, and names the shape of the fix: sample project 4 "needs its
-own approach to automate that, for example a fixture excluded from `elixirc_paths`
-that a dedicated test compiles on demand and asserts fails." That is precisely what
-this example does. So `test/deliberate_violation/violation_test.exs`
+Here, the point of the entire example is that a violation gets caught, so it is
+checked automatically rather than left to a manual reproduction step.
+`test/deliberate_violation/violation_test.exs`
 shells out to the isolated build itself, as a subprocess, from inside an
 ordinary `ExUnit` test that `mix test` runs every time:
 
@@ -280,8 +276,3 @@ this whole example exists to prevent.
 like `antipattern/` in example 3, is never compiled by the default `:dev` or
 `:test` env. That is the reason the violation can ship as real, complete
 code, and not as a prose description of one.
-
-See `examples/01_basic_boundary/README.md`'s "Conventions for other examples"
-section for the full set of structural conventions this example follows
-(standalone Mix project, committed `mix.lock`, mandatory root `use Boundary`
-module, and so on). They apply here without modification.
