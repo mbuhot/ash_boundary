@@ -15,6 +15,8 @@ esac
 # Generated project scaffolding keeps its stock comments.
 case "$f" in
   */config/*|*/mix.exs|*/test_helper.exs) exit 0 ;;
+  */application.ex|*/endpoint.ex|*/telemetry.ex|*/router.ex) exit 0 ;;
+  */core_components.ex|*/layouts.ex|*/error_html.ex|*/error_json.ex) exit 0 ;;
 esac
 
 total=$(grep -c '' "$f")
