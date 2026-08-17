@@ -59,74 +59,13 @@ Exports do not propagate through relationships. If an exported resource has a
 relationship to a non-exported resource, loading that relationship from
 outside the domain is a violation.
 
-## Relationships are checked, because aliases are checked
+AshBoundary sets `check: [aliases: true]`, so a cross-domain relationship is
+checked like any other reference.
 
-A cross-domain relationship names a module and calls nothing on it:
+Resources must be namespaced under their domain. AshBoundary raises at compile
+time otherwise, since `boundary` can neither export nor protect a module
+outside the namespace.
 
-    belongs_to :customer, Other.Customer
-
-`boundary` calls this an alias reference, and its default is
-`check: [aliases: false]`.
-
-AshBoundary sets `aliases: true` for every domain it declares, merged with any
-`boundary: [default: [check: [...]]]` in your `mix.exs`. An explicit
-`check: [aliases: false]` there is respected.
-
-## Constraint: resources must be namespaced under the domain
-
-`Boundary.Mix.Classifier` assigns a module to a boundary by module-name
-nesting alone. Every module under `MyApp.Blog.` belongs to the `MyApp.Blog`
-boundary. `boundary` has no way to assign a module from outside that
-namespace.
-
-Every resource of a domain extended with AshBoundary must live under the
-domain's own namespace:
-
-    MyApp.Blog                # the domain
-    MyApp.Blog.Post           # ok
-    MyApp.Blog.Posts.Comment  # ok, nesting can be deeper
-    MyApp.Post                # NOT ok
-
-A resource outside the namespace can neither be exported nor protected, so
-AshBoundary raises at compile time.
-
-## Declare `deps` by hand
-
-`deps` lists the other boundaries this domain may reference. AshBoundary never
-infers it from existing code.
-
-Each entry must itself be a boundary: another `Ash.Domain` extended with
-AshBoundary, or a module that calls `use Boundary` directly. Any other entry
-raises a compile-time error.
-
-An entry is a module, optionally paired with a dependency type from
-`Boundary`.
-
-  * A bare `MyApp.Accounts` (equivalent to `{MyApp.Accounts, :runtime}`)
-    permits every kind of reference, at runtime and at compile time.
-  * `{MyApp.Accounts, :compile}` narrows this to compile-time references
-    only: invocations outside any function, macro invocations, and calls
-    from a public macro. An ordinary runtime call to it becomes a violation.
-    `boundary` has no way to permit a dependency at runtime only.
-
-A dep grants access to the other domain's exports only.
-
-## Do not also `use Boundary`
-
-`use Boundary` on a domain extended with AshBoundary registers two
-declarations for the same module, and source order decides the winner.
-AshBoundary rejects it at compile time. To write the declaration by hand, drop
-the extension.
-
-## Structure
-
-  * `AshBoundary.Info` reads the computed `deps` and `exports` back off a
-    domain.
-  * `AshBoundary.Declaration` is the low-level integration point with
-    `boundary`.
-  * `AshBoundary.Transformers.ValidateDomain` runs compile-time validation.
-  * `AshBoundary.Transformers.DeclareBoundary` computes and installs the
-    declaration.
 
 
 ## boundary
