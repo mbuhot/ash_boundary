@@ -24,3 +24,9 @@ ash_boundary-*.tar
 
 # Dialyzer PLT files.
 /priv/plts/
+
+# Each sample project under examples/ is its own standalone Mix project (own
+# mix.exs, own deps) — ignore their build artifacts the same way as the root's.
+examples/*/_build/
+examples/*/deps/
+examples/*/doc/
