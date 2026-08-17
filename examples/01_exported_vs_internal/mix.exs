@@ -5,7 +5,7 @@ defmodule ExportedVsInternal.MixProject do
     [
       app: :exported_vs_internal,
       version: "0.1.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.20",
       start_permanent: Mix.env() == :prod,
       compilers: [:boundary] ++ Mix.compilers(),
       deps: deps()

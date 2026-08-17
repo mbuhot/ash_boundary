@@ -42,8 +42,8 @@ jobs:
         with:
           # Matches the version pinned in ci.yml, so docs are always built with the same
           # toolchain the rest of CI already validates against.
-          elixir-version: "1.18.3"
-          otp-version: "27.2"
+          elixir-version: "1.20.2"
+          otp-version: "29.0.3"
 
       - name: Restore deps and _build cache
         uses: actions/cache@v4

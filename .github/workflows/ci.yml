@@ -20,8 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - elixir: "1.18.3"
-            otp: "27.2"
+          - elixir: "1.20.2"
+            otp: "29.0.3"
 
     steps:
       - uses: actions/checkout@v4
@@ -99,8 +99,8 @@ jobs:
         # Same Elixir/OTP pin as the root `test` job above, for consistency across the
         # whole repo's CI. Each example is its own Mix project, so this is a separate
         # setup-beam install per matrix leg, not a shared toolchain.
-        elixir: ["1.18.3"]
-        otp: ["27.2"]
+        elixir: ["1.20.2"]
+        otp: ["29.0.3"]
 
     steps:
       - uses: actions/checkout@v4

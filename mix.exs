@@ -9,7 +9,7 @@ defmodule AshBoundary.MixProject do
     [
       app: :ash_boundary,
       version: @version,
-      elixir: "~> 1.15",
+      elixir: "~> 1.20",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
