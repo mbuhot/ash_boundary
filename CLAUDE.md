@@ -39,4 +39,9 @@ sentence restates the first for effect. State the fact once and stop.
 Describe what the library is and what it does. Never argue for it. A README
 section that exists to persuade gets deleted.
 
+Assume the reader knows Elixir, Mix and Ash. Do not explain `--warnings-as-errors`,
+`MIX_ENV`, `mix docs`, dependency scoping, or any other general tooling behaviour.
+Document what this library does. Everything else is the reader's own knowledge or
+another project's documentation.
+
 Prefer short sentences, the active voice, and no em dash.
