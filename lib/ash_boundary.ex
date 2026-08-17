@@ -24,12 +24,6 @@ defmodule AshBoundary do
         end
       end
 
-  The compiler enforces these rules on every build:
-
-    * Outside code may reference `MyApp.Blog.Post`.
-    * Outside code may not reference `MyApp.Blog.Comment`.
-    * `MyApp.Blog` may reference only `MyApp.Accounts`.
-
   ## Setup
 
   Add the `:boundary` compiler to your project configuration:
@@ -43,6 +37,11 @@ defmodule AshBoundary do
       end
 
   ## What gets exported
+
+    * The domain module is public.
+    * Each resource that exposes a code interface in the domain is public.
+    * All other modules in the domain's namespace are internal.
+    * Referencing another domain requires an explicit `boundary` dep.
 
   A resource whose only code interface is declared on the resource module itself
   (`code_interface do ... end` inside `use Ash.Resource`) stays internal.
