@@ -30,3 +30,4 @@ ash_boundary-*.tar
 examples/*/_build/
 examples/*/deps/
 examples/*/doc/
+examples/*/cover/

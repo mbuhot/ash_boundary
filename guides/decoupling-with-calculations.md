@@ -83,9 +83,12 @@ resources do
 end
 ```
 
-`Directory` is a small resource with no data layer. It holds one generic
-action that answers the question `Orders` asks: a list of ids in, display
-names out. Callers receive answers. Callers receive no records.
+`Directory` is a small resource with no data layer. The snippet above gives it
+one generic action, the one that answers the question `Orders` asks: a list of
+ids in, display names out. Callers receive answers. Callers receive no records.
+A real facade grows to hold the whole of its domain's public interface — the
+runnable `examples/03_decoupling_via_calculation` version of `Directory` ships
+two actions, `:register` alongside `:display_names`.
 
 **3. `Order` gains a calculation that calls that interface.**
 

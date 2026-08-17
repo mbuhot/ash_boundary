@@ -79,7 +79,7 @@ defmodule AshBoundary.MixProject do
       ],
       # README.md's links to `examples/*` and `LICENSE` are meant for GitHub, where the
       # README is read in place and those relative paths resolve. ExDoc only knows about
-      # files listed in `extras` (the four example directories and LICENSE aren't, and
+      # files listed in `extras` (the five example directories and LICENSE aren't, and
       # shouldn't be — they're not part of the published API docs), so it reports every
       # one of them as a dead link. Same convention Ash itself uses for its own
       # GitHub-native files (CHANGELOG.md, CONTRIBUTING.md).

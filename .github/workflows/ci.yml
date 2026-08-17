@@ -71,3 +71,103 @@ jobs:
 
       - name: Test
         run: mix test
+
+  # Runs each example's own documented gate independently, in its own directory, with
+  # its own deps/_build cache. Everything under examples/ is a fully separate Mix
+  # project (own mix.exs, mix.lock, deps) — see examples/01_basic_boundary/README.md's
+  # "Conventions for other examples" section for the shared structure, and each
+  # example's own README for its "Gate" section. Every example's gate is the same four
+  # commands, run in this order from within that example's own directory:
+  #   mix deps.get && mix format --check-formatted && mix compile --warnings-as-errors && mix test
+  #
+  # Example 05 (Phoenix/LiveView) has five Mix compile envs: `dev`, `test`, and `prod`
+  # share one `elixirc_paths` clause, and `:violation` and `:undefined_form` each get
+  # their own (see that example's mix.exs). This job compiles the `test` env directly —
+  # this workflow's MIX_ENV, the same env the root `test` job above checks — and its
+  # Test step additionally exercises `:violation` and `:undefined_form`, because the
+  # example's own AshViolationTest shells out to a real `mix compile
+  # --warnings-as-errors` in each of those two envs and asserts each one fails as
+  # documented. So four of the five envs get compiled on this leg.
+  #
+  # `dev` and `prod` are the two left unchecked here, and the reason is CI cost, not a
+  # claim that they cannot regress. Each additional env means another from-scratch
+  # compile of this example's whole Phoenix + Ash dependency tree in a fresh nested
+  # _build directory, which is the dominant cost on this leg already. Both were
+  # verified locally during the example's own development. That also mirrors the root
+  # job's own long-standing choice to check exactly one compile env in CI.
+  examples:
+    name: "example (${{ matrix.example }})"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - 01_basic_boundary
+          - 02_exported_vs_internal
+          - 03_decoupling_via_calculation
+          - 04_deliberate_violation
+          - 05_phoenix_liveview
+        # Same Elixir/OTP pin as the root `test` job above, for consistency across the
+        # whole repo's CI. Each example is its own Mix project, so this is a separate
+        # setup-beam install per matrix leg, not a shared toolchain.
+        elixir: ["1.18.3"]
+        otp: ["27.2"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        id: beam
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      # examples/05_phoenix_liveview/mix.exs depends on :lazy_html (only :test), which
+      # Phoenix.LiveViewTest uses to parse rendered HTML and which compiles a native
+      # library. Its own README flags the requirement. Every other example is pure
+      # Elixir over Ash.DataLayer.Ets and needs nothing extra here.
+      - name: Install C toolchain for :lazy_html (example 05 only)
+        if: matrix.example == '05_phoenix_liveview'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+
+      - name: Restore deps and _build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            examples/${{ matrix.example }}/deps
+            examples/${{ matrix.example }}/_build
+          # Keyed per example (the matrix value is part of the key itself), so no
+          # example shares a cache entry with the root project's job above or with any
+          # other example — each is a fully separate Mix project with its own
+          # mix.lock.
+          key: mix-example-${{ matrix.example }}-${{ runner.os }}-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-${{ hashFiles(format('examples/{0}/mix.lock', matrix.example)) }}
+          restore-keys: |
+            mix-example-${{ matrix.example }}-${{ runner.os }}-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Compile (warnings as errors)
+        run: mix compile --warnings-as-errors
+
+      # Example 04's ViolationTest and example 05's AshViolationTest/ExampleTest each
+      # shell out to a real, isolated `mix compile --warnings-as-errors` subprocess
+      # (MIX_ENV=violation, etc., in a nested _build/ tree). On a cold cache that
+      # subprocess compiles its own deps and app from scratch, which the examples' own
+      # READMEs document as taking roughly a minute (example 04) to a few minutes
+      # (example 05, two extra envs). 20 minutes leaves comfortable headroom over that
+      # without masking a genuine hang.
+      - name: Test
+        run: mix test
+        timeout-minutes: 20

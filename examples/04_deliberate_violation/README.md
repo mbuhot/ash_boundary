@@ -17,7 +17,7 @@ isolated and proven" below.
 | `DeliberateViolation.Accounting.LedgerEntry` | **no** | the real, ETS-backed resource. Has its own `code_interface` (`create`, `read`) for use inside the domain |
 | `DeliberateViolation.Accounting.Summary` | yes | the domain's entire public API: two generic actions, `:record` and `:total` |
 | `DeliberateViolation.Billing` | yes | domain that owns invoices, shipped clean. `boundary do deps [...Accounting] end` |
-| `DeliberateViolation.Billing.Invoice` | yes | has `attribute :ledger_entry_id, :uuid`, no relationship, and a `:ledger_total` calculation that calls `Accounting`'s exported `Summary` facade |
+| `DeliberateViolation.Billing.Invoice` | yes | has `attribute :ledger_entry_id, :uuid`, no relationship, and a `:ledger_total` calculation that calls `Accounting`'s exported `Summary` facade (via `total_ledger_balance!/0`) |
 | `DeliberateViolation.Violation.Billing` | yes | not compiled by any normal build. Same domain as `Billing`, same honest `deps` line, reaching past it anyway |
 | `DeliberateViolation.Violation.Billing.Invoice` | yes | the alias-style violation: `belongs_to :ledger_entry, ...Accounting.LedgerEntry` |
 | `DeliberateViolation.Violation.Billing.LedgerEntryCaller` | n/a | the call-style violation: `LedgerEntry.create!/1`, called directly |
@@ -127,17 +127,24 @@ captured, by the same subprocess this example's own test suite runs.
 (`lib/deliberate_violation/billing/calculations/ledger_total.ex`) makes the
 same shape of cross-domain call as the violation above, a module outside
 `Accounting` calling into it. It calls the exported
-`DeliberateViolation.Accounting.ledger_total!/0`:
+`DeliberateViolation.Accounting.total_ledger_balance!/0`:
 
 ```elixir
 alias DeliberateViolation.Accounting
 
 @impl Ash.Resource.Calculation
 def calculate(invoices, _opts, _context) do
-  total = Accounting.ledger_total!()
+  total = Accounting.total_ledger_balance!()
   {:ok, Enum.map(invoices, fn _invoice -> total end)}
 end
 ```
+
+Note the name: `total_ledger_balance!/0` is nullary and returns the *whole
+ledger's* balance, the same value for every invoice. That is a deliberate,
+disclosed simplification for this contrast case, not a per-invoice figure —
+unlike example 3's `Customers.customer_display_names/1`, which batches by a
+list of ids and returns a different answer per record. A name implying
+"this invoice's total" would misdescribe what the function does.
 
 `DeliberateViolation.Billing` declares `boundary do deps
 [DeliberateViolation.Accounting] end`, the same `deps` line
@@ -202,8 +209,10 @@ antipattern build failing is supporting evidence, not the point itself.
 Here, the point of the entire example is that a violation gets caught. A
 manual reproduction step would leave the one thing this sample project exists
 to demonstrate as the one thing nothing automatically checks. `examples/01_basic_boundary`'s
-README flags this gap: it says sample project 4 "is expected to need its own
-approach to make that automated." So `test/deliberate_violation/violation_test.exs`
+README flags this gap, and names the shape of the fix: sample project 4 "needs its
+own approach to automate that, for example a fixture excluded from `elixirc_paths`
+that a dedicated test compiles on demand and asserts fails." That is precisely what
+this example does. So `test/deliberate_violation/violation_test.exs`
 shells out to the isolated build itself, as a subprocess, from inside an
 ordinary `ExUnit` test that `mix test` runs every time:
 

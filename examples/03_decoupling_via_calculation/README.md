@@ -3,7 +3,7 @@
 This example shows two Ash domains with a direct resource-to-resource
 relationship between them. It then replaces that relationship with a
 calculation. The calculation calls the other domain's exported function.
-This is sample project 3 of 4 from the AshBoundary project goal.
+This is sample project 3 of 5 from the AshBoundary project goal.
 
 Both states are here:
 
@@ -29,16 +29,29 @@ Both states are here:
 | `DecouplingViaCalculation` | n/a | the app's root boundary, plain `use Boundary`, mandatory in every example (see sample 1) |
 
 `AshBoundary.Declaration.definition/1` reads the computed declarations back off
-the compiled modules:
+the compiled modules. It returns a map — `%{opts: ..., app: ..., pos: ...,
+protocol?: ..., mix_task?: ...}`. The `opts` key holds the boundary declaration
+itself, and it is the only part this example is about:
 
-```
-DecouplingViaCalculation:           []
-DecouplingViaCalculation.Customers: [exports: [Directory], deps: []]
-DecouplingViaCalculation.Orders:    [exports: [Order], deps: [DecouplingViaCalculation.Customers]]
+```elixir
+AshBoundary.Declaration.definition(DecouplingViaCalculation).opts
+#=> []
+
+AshBoundary.Declaration.definition(DecouplingViaCalculation.Customers).opts
+#=> [exports: [Directory], deps: [], check: [aliases: true]]
+
+AshBoundary.Declaration.definition(DecouplingViaCalculation.Orders).opts
+#=> [exports: [Order], deps: [DecouplingViaCalculation.Customers], check: [aliases: true]]
 ```
 
 `Customers` exports exactly one module. That module is `Directory`, not
 `Customer`.
+
+The `check: [aliases: true]` on each domain is not written anywhere in this
+project. AshBoundary adds it, and it is what makes a cross-domain relationship a
+caught violation rather than a silent one. See "Alias checking is on by default"
+below. The root `DecouplingViaCalculation` boundary has empty `opts` because it is
+a plain `use Boundary`, not a domain AshBoundary manages.
 
 ## BEFORE: the relationship, and what it costs
 

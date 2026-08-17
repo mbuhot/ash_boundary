@@ -6,7 +6,7 @@ defmodule DeliberateViolation.Billing do
   `boundary do deps [...] end` is the honest, reviewable declaration that this domain
   calls into `DeliberateViolation.Accounting`. `DeliberateViolation.Billing.Invoice`'s
   `:ledger_total` calculation calls the exported
-  `DeliberateViolation.Accounting.ledger_total!/0`. That `deps` entry grants access to
+  `DeliberateViolation.Accounting.total_ledger_balance!/0`. That `deps` entry grants access to
   `Accounting`'s exports: the domain module and the `Summary` facade. It grants no
   access to `Accounting.LedgerEntry`, which stays unreachable no matter what this
   domain declares.

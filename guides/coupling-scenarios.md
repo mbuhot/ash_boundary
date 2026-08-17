@@ -116,7 +116,7 @@ Define an explicit actor struct with three fields, as its own small boundary:
 
 ```elixir
 defmodule MyApp.Actor do
-  use Boundary
+  use Boundary, check: [aliases: true]
 
   @enforce_keys [:id, :role, :permissions]
   defstruct [:id, :role, :permissions]
@@ -130,6 +130,15 @@ end
 
 A domain's exports come from the `define` entries in its `resources` block, so
 a plain struct module declares its own boundary with `use Boundary`.
+
+Note the `check: [aliases: true]` above, on this snippet and on every
+hand-written `use Boundary` in this guide. AshBoundary sets that option for every
+domain it manages, but a boundary you declare yourself does not inherit it, and
+`boundary`'s own default is `aliases: false`. Without it, a reference that only
+names a module and calls nothing on it — exactly the shape of
+`belongs_to :customer, OtherDomain.Customer` — goes unchecked. See
+`examples/05_phoenix_liveview`, whose web-layer boundary is hand-written and
+needs the same opt-in.
 
 ### The compiler check
 
@@ -152,7 +161,7 @@ Resolutions, in preference order:
 
    ```elixir
    defmodule MyAppWeb do
-     use Boundary, deps: [MyApp.Orders, MyApp.Customers]
+     use Boundary, check: [aliases: true], deps: [MyApp.Orders, MyApp.Customers]
    end
    ```
 

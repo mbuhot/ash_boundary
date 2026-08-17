@@ -12,8 +12,9 @@ defmodule DeliberateViolation.Billing.Invoice do
   The `:ledger_total` calculation is the clean half of this example's side-by-side
   comparison. It reaches into `DeliberateViolation.Accounting` through
   `DeliberateViolation.Billing.Calculations.LedgerTotal`, which calls the domain's
-  exported `ledger_total!/0`. See that module's moduledoc for the direct comparison
-  with the deliberate violation.
+  exported `total_ledger_balance!/0`. See that module's moduledoc for the direct
+  comparison with the deliberate violation, and for why the calculation returns the
+  same whole-ledger figure for every invoice rather than a per-invoice amount.
   """
 
   use Ash.Resource,

@@ -21,22 +21,27 @@ defmodule DeliberateViolation.BillingTest do
   test "an invoice's ledger_total comes from Accounting's exported Summary, not from Billing" do
     entry_id = Accounting.record_entry!("Consulting", 500)
 
-    invoice = Billing.issue_invoice!(%{ledger_entry_id: entry_id, amount: 500})
+    # The invoice's own amount is deliberately NOT the ledger total. If both were 500,
+    # this test could not tell a value that genuinely crossed the boundary from
+    # `Billing` simply echoing back the amount it already had.
+    invoice = Billing.issue_invoice!(%{ledger_entry_id: entry_id, amount: 700})
 
     # Billing stores only the id: there is nowhere for a total to be hiding.
     assert invoice.ledger_entry_id == entry_id
-    refute Map.has_key?(invoice, :description)
+    assert invoice.amount == 700
     assert %Ash.NotLoaded{} = invoice.ledger_total
 
     loaded = Billing.get_invoice!(invoice.id, load: [:ledger_total])
 
+    # 500, the ledger entry recorded through Accounting — not 700, this invoice's own
+    # amount. Only the calculation calling Accounting's exported facade supplies this.
     assert loaded.ledger_total == 500
   end
 
-  test "Accounting.ledger_total!/0 sums every recorded entry, reachable only through Summary" do
+  test "Accounting.total_ledger_balance!/0 sums every recorded entry, reachable only through Summary" do
     Accounting.record_entry!("Consulting", 500)
     Accounting.record_entry!("Hosting", 125)
 
-    assert Accounting.ledger_total!() == 625
+    assert Accounting.total_ledger_balance!() == 625
   end
 end

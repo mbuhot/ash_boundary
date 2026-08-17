@@ -19,7 +19,7 @@ defmodule DeliberateViolation.Accounting do
           DeliberateViolation.Accounting.record_entry!(description, amount)
           #=> a ledger entry id
 
-          DeliberateViolation.Accounting.ledger_total!()
+          DeliberateViolation.Accounting.total_ledger_balance!()
           #=> the sum of every recorded amount
 
   See the `Customers` domain in `examples/03_decoupling_via_calculation` for the full
@@ -38,7 +38,13 @@ defmodule DeliberateViolation.Accounting do
     # Exported: this is the entire public API of this domain.
     resource DeliberateViolation.Accounting.Summary do
       define :record_entry, action: :record, args: [:description, :amount]
-      define :ledger_total, action: :total
+      # Named `total_ledger_balance`, not `ledger_total`: this is nullary and returns
+      # the whole ledger's balance, not a per-invoice figure. `Billing`'s `:ledger_total`
+      # calculation (see `Billing.Invoice`) calls this and gets the same value back for
+      # every invoice — a deliberate, disclosed simplification for this contrast case,
+      # unlike example 3's `Customers.customer_display_names/1`, which is properly
+      # batched per-record. A name implying "this invoice's total" would misdescribe it.
+      define :total_ledger_balance, action: :total
     end
   end
 end

@@ -153,11 +153,18 @@ stay readable.
 ### What strict costs, and the alternative to prefer
 
 `@framework_deps` contains entries such as `Plug.Builder`, `Plug.Debugger`,
-`Phoenix.Config`, `Phoenix.Flash`, and `Phoenix.Transports.WebSocket`. No file
-in `lib/example_web/` names them. `use Phoenix.Endpoint` and
+`Phoenix.Config`, and `Phoenix.Transports.WebSocket`. No file in
+`lib/example_web/` names any of those four. `use Phoenix.Endpoint` and
 `use Phoenix.Router` reference them for you. Every entry in the list is there
 because a real reference failed without it. A Phoenix upgrade that changes those
 internals will require a change to the list.
+
+Not every entry is invisible, though. `Phoenix.Flash` is in the list because
+`lib/example_web/components/core_components.ex:61` calls
+`Phoenix.Flash.get(@flash, @kind)` outright, in the flash-group component that
+`mix phx.new` generates. That is an ordinary, visible reference in this app's own
+source. The cost of `:strict` is that both kinds of entry — the framework
+internals you never wrote, and the framework calls you did — have to be named.
 
 There is a surgical alternative, and a real application should consider it:
 

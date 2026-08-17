@@ -23,6 +23,13 @@ The calculation calls a function on the public interface of the other domain.
 See [the decoupling guide](guides/decoupling-with-calculations.md) and
 [`examples/03_decoupling_via_calculation`](examples/03_decoupling_via_calculation).
 
+Two guides are in [`guides/`](guides):
+
+- [Decoupling with calculations](guides/decoupling-with-calculations.md): the
+  core pattern, step by step.
+- [Coupling scenarios](guides/coupling-scenarios.md): five kinds of coupling
+  that show up in a real Ash application, and what AshBoundary does about each.
+
 ## Installation
 
 Add `ash_boundary` and `boundary` to the deps in `mix.exs`:
@@ -95,7 +102,7 @@ Five standalone Mix projects are in [`examples/`](examples):
 - [`02_exported_vs_internal`](examples/02_exported_vs_internal): a domain-level `define` exports a resource. A resource-level `code_interface` keeps the resource internal.
 - [`03_decoupling_via_calculation`](examples/03_decoupling_via_calculation): a calculation replaces a cross-domain relationship.
 - [`04_deliberate_violation`](examples/04_deliberate_violation): a test shows that `mix compile --warnings-as-errors` catches two boundary violations.
-- [`05_phoenix_liveview`](examples/05_phoenix_liveview): a Phoenix LiveView app. The web layer can pattern-match resource structs and call functions declared on the domain. The web layer cannot call `Ash.read!/1`, `Ash.load!/2`, or match an `%Ash.Error.Invalid{}` struct. This example needs no new AshBoundary feature. It combines the deps and exports mechanism with plain `boundary`'s external app checks (`type: :strict` and `check: [apps: [...]]`) on the web layer's own boundary.
+- [`05_phoenix_liveview`](examples/05_phoenix_liveview): a Phoenix LiveView app. The web layer can pattern-match resource structs and call functions declared on the domain. The web layer cannot call `Ash.read!/1`, `Ash.load!/2`, or match an `%Ash.Error.Invalid{}` struct. This example needs no new AshBoundary feature. It combines the deps and exports mechanism with plain `boundary`'s external app checks: `use Boundary, type: :strict, check: [aliases: true]` on the web layer's own boundary. No `check: [apps: [...]]` allowlist is needed — `type: :strict` already checks every application on its own.
 
 Each example has a README with run instructions.
 
