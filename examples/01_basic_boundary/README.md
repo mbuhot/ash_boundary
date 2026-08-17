@@ -45,13 +45,16 @@ below.
 ## Running it
 
 ```
-mix format --check-formatted
 mix deps.get
+mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
 ```
 
-All four should succeed. `mix test` runs `BasicBoundary.ReportsTest`, which is the
+`mix deps.get` must run before `mix format --check-formatted`: `.formatter.exs`'s
+`import_deps` needs the deps actually present on disk to resolve, and fails with
+`Unknown dependency :ash given to :import_deps` on a clean checkout otherwise. All four
+should succeed. `mix test` runs `BasicBoundary.ReportsTest`, which is the
 proof that calling the domain's exported interface from outside its namespace
 genuinely works at runtime, not just at compile time.
 
@@ -93,9 +96,12 @@ yourself:
    warning: forbidden reference to BasicBoundary.Blog.Comment
      (module BasicBoundary.Blog.Comment is not exported by its owner boundary BasicBoundary.Blog)
      lib/basic_boundary/scratch_violation.ex:2
-
-   Compilation failed due to warnings while using the --warnings-as-errors option
    ```
+
+   `boundary` prints nothing further after the warning itself — there is no trailing
+   "Compilation failed" summary line for this kind of warning (unlike some other
+   warning types, which do log a separate summary). The exit code is `1`, which is what
+   `--warnings-as-errors` actually depends on to fail the build.
 
 4. Delete `lib/basic_boundary/scratch_violation.ex` to restore the example to its
    shipped state.
@@ -158,8 +164,11 @@ follow:
   approaches best suits what that example demonstrates, and document the choice
   there.
 - **Gate**: every example must independently pass, from within its own directory:
-  `mix format --check-formatted && mix deps.get && mix compile --warnings-as-errors
-  && mix test`. The format check is included explicitly because the root project's
+  `mix deps.get && mix format --check-formatted && mix compile --warnings-as-errors
+  && mix test`, in that order — `mix deps.get` has to run first, because
+  `.formatter.exs`'s `import_deps` needs the deps actually present on disk to resolve
+  and fails with `Unknown dependency :ash given to :import_deps` on a clean checkout
+  otherwise. The format check is included explicitly because the root project's
   `.formatter.exs` does not reach into `examples/` at all — nothing else format-checks
   an example's code, so each example is responsible for passing this on its own. This
   is a new gate introduced by this example; the root repo's task-10 CI wiring is
