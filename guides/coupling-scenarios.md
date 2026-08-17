@@ -1,7 +1,21 @@
 # Coupling Scenarios
 
-A contract between two domains requires some coupling. The size of the contract
-decides its cost:
+AshBoundary draws a compile-time line around each Ash domain. This guide shows
+five common ways application code couples across that line, and the domain
+shape that makes each one searchable or rejected.
+
+Each scenario has the same three parts:
+
+- a question a developer asks in a grown codebase,
+- the wide contract that makes the question hard to answer,
+- the narrow contract that answers it with a search, plus the check the
+  compiler applies.
+
+## Contracts and their size
+
+Two domains that communicate share some knowledge. That shared knowledge is a
+contract, and some coupling is the price of every contract. The size of the
+contract decides the cost:
 
 - A wide contract (a resource struct, a relationship, a table) shows every
   detail to every consumer. Each detail becomes load-bearing. Change becomes
@@ -11,13 +25,15 @@ decides its cost:
 
 ## The search test
 
-Two searches must explain a resource's state:
+One practical test judges every scenario. Two searches must explain a
+resource's state:
 
 1. Search the resource's own domain for its actions, changes, and hooks.
 2. Search for the callers of the domain's exported code interface.
 
-Each scenario below shows a coupling that breaks this test, the contract that
-restores it, and the check the compiler applies.
+When the test passes, those two searches find the code responsible for each
+state a resource can reach. When a coupling breaks the test, the writers and
+the rules hide in distant parts of the codebase.
 
 ## Scenario 1: "Who cancelled this order?"
 
