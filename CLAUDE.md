@@ -43,6 +43,10 @@ One line of explanation above the commented code, no more. The commented code
 must describe a path the surrounding contract actually allows: never leave a
 clause that could not match, or that implies control flow the code rules out.
 
+It must also be a real boundary violation, meaning a reference the compiler
+rejects for crossing a boundary. A missing function, an undefined interface, or
+a call to a different action demonstrates something other than this library.
+
 Do not build fixture directories, extra `MIX_ENV`s, `elixirc_paths` entries, or
 tests that shell out to `mix compile`. Do not paste captured compiler output
 into a README. The library's own test suite already proves that `boundary`
