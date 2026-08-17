@@ -34,6 +34,19 @@ Do not write in this style, in code or in documentation:
 No emphasis for its own sake. No two-sentence constructions where the second
 sentence restates the first for effect. State the fact once and stop.
 
+## Use the DSL
+
+A domain module carries `define`s, not hand-written functions. Behaviour is
+declared on a resource as an action, a calculation, or an aggregate, and exposed
+with a domain-level `define`. A bare `def` on a domain module means the DSL was
+not used.
+
+Code interfaces return what Ash returns. Never write a wrapper whose job is
+translating an Ash error into plain data. Where a caller outside a domain must
+match an `Ash.Error.*` struct, name that module in the caller's boundary `deps`:
+entries are module-granular for external applications, so the struct is
+permitted while the rest of `:ash` stays checked.
+
 ## Demonstrating a violation
 
 Show it as commented-out code in the real source file, with the correct usage
