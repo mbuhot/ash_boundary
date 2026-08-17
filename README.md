@@ -83,6 +83,11 @@ Two examples live in [`examples/`](examples), each its own Mix project:
   domains. Its web layer reaches both through their exported interfaces and cannot call `Ash.*`.
 
 
+## Clarity
+
+With [`clarity`](https://hex.pm/packages/clarity) installed, each domain gains a "Boundary
+Dependencies" tab holding a diagram of its `deps`, where clicking a node opens that domain.
+
 ## Usage rules
 
 The package ships a `usage-rules.md` for

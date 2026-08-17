@@ -11,7 +11,7 @@ defmodule Example.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:boundary, :phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader, Clarity.CodeReloader]
     ]
   end
 
@@ -43,6 +43,7 @@ defmodule Example.MixProject do
       {:ash, "~> 3.31"},
       {:ash_boundary, path: "../.."},
       {:ash_phoenix, "~> 2.3"},
+      {:clarity, "~> 0.6"},
       {:phoenix, "~> 1.8.9"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},

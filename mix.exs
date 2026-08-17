@@ -26,7 +26,7 @@ defmodule AshBoundary.MixProject do
         # `:boundary` is a `runtime: false` dep, so it is not in the PLT by
         # default and every call AshBoundary makes into it would be reported as
         # an unknown function.
-        plt_add_apps: [:mix, :ex_unit, :boundary],
+        plt_add_apps: [:mix, :ex_unit, :boundary, :clarity],
         plt_file: {:no_warn, "priv/plts/dialyzer.plt"}
       ]
     ]
@@ -38,7 +38,10 @@ defmodule AshBoundary.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      env: [
+        clarity_content_providers: [AshBoundary.Clarity.DomainDependencies]
+      ]
     ]
   end
 
@@ -48,6 +51,7 @@ defmodule AshBoundary.MixProject do
       {:ash, "~> 3.31"},
       {:spark, "~> 2.7"},
       {:boundary, "~> 0.10.4", runtime: false},
+      {:clarity, "~> 0.5", optional: true},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       # `mix spark.formatter`, which regenerates the `boundary` DSL's

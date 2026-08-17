@@ -142,3 +142,16 @@ module needs its own entry.
 
 `AshBoundary.Info.deps/1` and `AshBoundary.Info.exports/1` accept a compiled
 domain module or the DSL state a transformer receives.
+
+## Clarity
+
+With [`clarity`](https://hex.pm/packages/clarity) in the consuming project, a
+"Boundary Dependencies" tab appears on every AshBoundary domain and on the
+application. It holds a Graphviz diagram of the domain's `deps`, followed
+recursively, rooted at that domain. Clicking a node opens that domain in Clarity.
+A `{module, :compile}` dep is a dashed edge, and a dep declared by hand with
+`use Boundary` is drawn as a module rather than a domain.
+
+Nothing to configure. AshBoundary registers the content provider through its own
+application environment, and `AshBoundary.Clarity.DomainDependencies` is only
+compiled when `clarity` is available, so a project without it is unaffected.

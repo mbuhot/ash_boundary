@@ -162,3 +162,13 @@ mix phx.server   # then open http://localhost:4000
 `config/dev.exs` sets `seed_posts?: true`, so `Example.Application` registers an author and creates
 two posts on boot. ETS holds records in the memory of the running node, so a server started without
 the seed shows an empty list. Live reload needs `inotify-tools` on Linux.
+
+## Clarity
+
+`http://localhost:4000/clarity` mounts [Clarity](https://hex.pm/packages/clarity). Open
+`Example.Blog` and the "Boundary Dependencies" tab holds the diagram AshBoundary contributes.
+Clicking `Example.Accounts` in it navigates to that domain.
+
+The routes sit behind `Application.compile_env(:example, :dev_routes)`, so they exist in `:dev`
+only. `ExampleWeb` needed no change to take them: `check: [apps: [:ash, :spark]]` names the only
+applications `boundary` checks, and `:clarity` is not one of them.

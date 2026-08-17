@@ -20,6 +20,16 @@ defmodule ExampleWeb.Router do
     live "/", PostLive, :index
   end
 
+  if Application.compile_env(:example, :dev_routes) do
+    import Clarity.Router
+
+    scope "/clarity" do
+      pipe_through :browser
+
+      clarity "/"
+    end
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", ExampleWeb do
   #   pipe_through :api
