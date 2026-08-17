@@ -34,6 +34,16 @@ Do not write in this style, in code or in documentation:
 No emphasis for its own sake. No two-sentence constructions where the second
 sentence restates the first for effect. State the fact once and stop.
 
+## Demonstrating a violation
+
+Show it as commented-out code in the real source file, with the correct usage
+directly below it. A reader uncomments one line to watch the compiler reject it.
+
+Do not build fixture directories, extra `MIX_ENV`s, `elixirc_paths` entries, or
+tests that shell out to `mix compile`. Do not paste captured compiler output
+into a README. The library's own test suite already proves that `boundary`
+catches violations.
+
 ## Documentation
 
 Describe what the library is and what it does. Never argue for it. A README
