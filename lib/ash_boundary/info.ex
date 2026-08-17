@@ -1,0 +1,83 @@
+defmodule AshBoundary.Info do
+  @moduledoc """
+  Introspection for domains extended with `AshBoundary`.
+
+  Every function accepts either a compiled domain module or the in-progress
+  `t:Spark.Dsl.t/0` map a transformer or verifier is handed, so the same code answers
+  the question during compilation and afterwards.
+  """
+
+  alias Spark.Dsl.Extension
+
+  @typedoc "A `deps` entry, in either of the two forms the DSL accepts."
+  @type dep :: module() | {module(), :compile | :runtime}
+
+  @typedoc "A domain module, or the DSL state of one still being compiled."
+  @type domain :: Spark.Dsl.t() | Ash.Domain.t()
+
+  @doc """
+  The `deps` declared in the `boundary` section, exactly as written.
+
+  Defaults to `[]`, which is also what a domain with no `boundary` section gets.
+  """
+  @spec deps(domain()) :: [dep()]
+  def deps(domain), do: Extension.get_opt(domain, [:boundary], :deps, [])
+
+  @doc """
+  The modules named by `deps/1`, with any `{module, type}` pairs unwrapped.
+  """
+  @spec dep_modules(domain()) :: [module()]
+  def dep_modules(domain), do: Enum.map(deps(domain), &dep_module/1)
+
+  @doc """
+  The module named by a single `deps` entry.
+
+  ## Examples
+
+      iex> AshBoundary.Info.dep_module(MyApp.Accounts)
+      MyApp.Accounts
+
+      iex> AshBoundary.Info.dep_module({MyApp.Accounts, :compile})
+      MyApp.Accounts
+  """
+  @spec dep_module(dep()) :: module()
+  def dep_module({module, _type}) when is_atom(module), do: module
+  def dep_module(module) when is_atom(module), do: module
+
+  @doc """
+  Every resource the domain references, exported or not.
+  """
+  @spec resources(domain()) :: [module()]
+  def resources(domain), do: Enum.map(resource_references(domain), & &1.resource)
+
+  @doc """
+  The modules this domain exports: the domain itself, plus every resource carrying at
+  least one domain-level `define`.
+
+  The domain module leads the list because it is the domain's own public API. `boundary`
+  exports a boundary's root module implicitly, so `AshBoundary.Declaration` drops it
+  again when installing the declaration — see `AshBoundary.Declaration.relative_exports/2`.
+  """
+  @spec exports(domain()) :: [module()]
+  def exports(domain) do
+    exported =
+      domain
+      |> resource_references()
+      |> Enum.filter(&(&1.definitions != []))
+      |> Enum.map(& &1.resource)
+
+    [module(domain) | exported]
+  end
+
+  @doc """
+  The domain module, whether given the module itself or its DSL state.
+  """
+  @spec module(domain()) :: module()
+  def module(domain) when is_atom(domain), do: domain
+  def module(domain), do: Extension.get_persisted(domain, :module)
+
+  # `Ash.Domain.Info.resource_references/1` reads the same entities, but is documented as
+  # unsafe to call at compile time; going through `Spark.Dsl.Extension` keeps this usable
+  # from a transformer, where the argument is DSL state rather than a compiled module.
+  defp resource_references(domain), do: Extension.get_entities(domain, [:resources])
+end

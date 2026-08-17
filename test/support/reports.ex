@@ -7,10 +7,10 @@ defmodule AshBoundary.Test.Reports do
   `AshBoundary.Test.Blog.Comment`.
   """
 
-  use Ash.Domain, extensions: [AshBoundary.Test.Extension], validate_config_inclusion?: false
+  use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
 
   boundary do
-    deps([AshBoundary.Test.Blog])
+    deps [AshBoundary.Test.Blog]
   end
 
   resources do
@@ -19,14 +19,26 @@ end
 
 defmodule AshBoundary.Test.Isolated do
   @moduledoc """
-  Fixture domain that declares no deps at all, so any reference it makes into
+  Fixture domain with no `boundary` section at all, so any reference it makes into
   `AshBoundary.Test.Blog` is a violation regardless of what `Blog` exports.
   """
 
-  use Ash.Domain, extensions: [AshBoundary.Test.Extension], validate_config_inclusion?: false
+  use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
+
+  resources do
+  end
+end
+
+defmodule AshBoundary.Test.Archive do
+  @moduledoc """
+  Fixture domain using the `{module, :compile}` form of a `deps` entry, which narrows the
+  dependency to compile-time references only rather than widening a bare one.
+  """
+
+  use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
 
   boundary do
-    deps([])
+    deps [{AshBoundary.Test.Blog, :compile}]
   end
 
   resources do

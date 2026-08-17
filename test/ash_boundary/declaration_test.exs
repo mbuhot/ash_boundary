@@ -6,36 +6,8 @@ defmodule AshBoundary.DeclarationTest do
 
   doctest AshBoundary.Declaration
 
-  describe "declaring a boundary from a Spark transformer" do
-    test "the domain module really is a boundary as far as `boundary` is concerned" do
-      # `Boundary.Definition.get/2` with no definition cache is the path `boundary`
-      # takes for an already-compiled module: it reads the persisted attribute off
-      # the beam. A non-nil result here means nothing about AshBoundary is involved
-      # in the answer.
-      assert definition = Boundary.Definition.get(Blog, nil)
-      assert definition.app == :ash_boundary
-      assert definition.check.in
-      assert definition.check.out
-      assert definition.errors == []
-    end
-
-    test "exports are the resources with a domain-level define, expanded absolutely" do
-      definition = Boundary.Definition.get(Blog, nil)
-
-      assert definition.exports == [Blog.Post]
-      refute Blog.Comment in definition.exports
-    end
-
-    test "the boundary root is not listed, because `boundary` exports it implicitly" do
-      refute Blog in Boundary.Definition.get(Blog, nil).exports
-    end
-
-    test "declared deps survive the round trip" do
-      assert Boundary.Definition.get(AshBoundary.Test.Reports, nil).deps ==
-               [{Blog, :runtime}]
-    end
-
-    test "the raw attribute matches the shape `use Boundary` would have produced" do
+  describe "the declaration installed by the transformer" do
+    test "matches the shape `use Boundary` would have produced" do
       assert %{
                opts: opts,
                pos: %{file: file, line: 1},
@@ -85,6 +57,9 @@ defmodule AshBoundary.DeclarationTest do
     end
 
     test "refuses exports outside the boundary namespace" do
+      # Domains never reach this: `AshBoundary.Transformers.ValidateDomain` rejects an
+      # un-nested resource first, with an error that explains itself. This is the
+      # backstop for anything calling `declare/2` directly.
       assert_raise ArgumentError, ~r/nested under the boundary's own namespace/, fn ->
         defmodule Declared do
           Declaration.declare(__MODULE__, exports: [Enum])

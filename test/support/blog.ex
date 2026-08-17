@@ -15,6 +15,10 @@ defmodule AshBoundary.Test.Blog.Comment do
   @moduledoc false
   use Ash.Resource, domain: AshBoundary.Test.Blog
 
+  code_interface do
+    define(:read_comments, action: :read)
+  end
+
   attributes do
     uuid_primary_key(:id)
   end
@@ -26,15 +30,13 @@ end
 
 defmodule AshBoundary.Test.Blog do
   @moduledoc """
-  Fixture domain: `Post` has a domain-level `define` and is therefore exported,
-  `Comment` has none and stays internal.
+  Fixture domain: `Post` has a domain-level `define` and is therefore exported.
+
+  `Comment` declares a code interface on the resource module itself and none on the
+  domain, so it stays internal — the distinction design rule 1 turns on.
   """
 
-  use Ash.Domain, extensions: [AshBoundary.Test.Extension], validate_config_inclusion?: false
-
-  boundary do
-    deps([])
-  end
+  use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
 
   resources do
     resource AshBoundary.Test.Blog.Post do

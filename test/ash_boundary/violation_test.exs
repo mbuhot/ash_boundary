@@ -42,6 +42,8 @@ defmodule AshBoundary.ViolationTest do
   end
 
   test "reaching another boundary at all without declaring it as a dep is caught" do
+    # `AshBoundary.Test.Isolated` has no `boundary` section, which is the default a domain
+    # gets just by adding the extension: it may reach nothing.
     references =
       BoundaryCheck.capture_references(AshBoundary.Test.Isolated.Caller, """
       defmodule AshBoundary.Test.Isolated.Caller do
@@ -55,18 +57,18 @@ defmodule AshBoundary.ViolationTest do
   end
 
   test "declaring a boundary injects no code, so the domain gains no references" do
-    # This is the payoff of installing the declaration with function calls instead
-    # of an injected `use Boundary`: boundary's tracer sees nothing extra in the
-    # domain, so no spurious cross-boundary references are recorded against it.
+    # This is the payoff of installing the declaration with function calls instead of an
+    # injected `use Boundary`: boundary's tracer sees nothing extra in the domain, so no
+    # spurious cross-boundary references are recorded against it.
     references =
       BoundaryCheck.capture_references(AshBoundary.Test.Traced, """
       defmodule AshBoundary.Test.Traced do
         use Ash.Domain,
-          extensions: [AshBoundary.Test.Extension],
+          extensions: [AshBoundary],
           validate_config_inclusion?: false
 
         boundary do
-          deps([AshBoundary.Test.Blog])
+          deps [AshBoundary.Test.Blog]
         end
 
         resources do
@@ -77,6 +79,30 @@ defmodule AshBoundary.ViolationTest do
     assert references != []
 
     assert Enum.filter(references, &String.starts_with?(inspect(&1.to), "Boundary")) == []
+  end
+
+  test "writing the deps list in the DSL is not itself a violation" do
+    # Naming another domain in `deps` puts an alias to it in the domain's own source, which
+    # boundary's tracer records as a reference. It has to be permitted by the very
+    # declaration it is part of.
+    references =
+      BoundaryCheck.capture_references(AshBoundary.Test.TracedDeps, """
+      defmodule AshBoundary.Test.TracedDeps do
+        use Ash.Domain,
+          extensions: [AshBoundary],
+          validate_config_inclusion?: false
+
+        boundary do
+          deps [AshBoundary.Test.Blog]
+        end
+
+        resources do
+        end
+      end
+      """)
+
+    assert BoundaryCheck.reference_errors([AshBoundary.Test.TracedDeps | @world], references) ==
+             []
   end
 
   test "the fixture world itself is otherwise clean" do

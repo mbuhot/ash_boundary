@@ -44,7 +44,11 @@ defmodule AshBoundary.MixProject do
       {:spark, "~> 2.7"},
       {:boundary, "~> 0.10.4", runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      # `mix spark.formatter`, which regenerates the `boundary` DSL's
+      # `locals_without_parens` in `.formatter.exs`, only exists when Sourceror is
+      # available. Nothing at runtime needs it.
+      {:sourceror, "~> 1.2", only: [:dev, :test], runtime: false}
     ]
   end
 
