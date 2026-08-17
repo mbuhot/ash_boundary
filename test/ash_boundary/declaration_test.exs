@@ -32,6 +32,13 @@ defmodule AshBoundary.DeclarationTest do
       assert Keyword.fetch!(Declaration.definition(Blog).opts, :check) == [aliases: true]
     end
 
+    test "declares the domain top level, so a nested domain is nobody's child" do
+      normalized = Boundary.Definition.get(Blog, %{Blog => Declaration.definition(Blog)})
+
+      assert normalized.top_level?
+      assert Keyword.fetch!(Declaration.definition(Blog).opts, :top_level?)
+    end
+
     test "declared?/1 distinguishes boundaries from ordinary modules" do
       assert Declaration.declared?(Blog)
       refute Declaration.declared?(Blog.Post)

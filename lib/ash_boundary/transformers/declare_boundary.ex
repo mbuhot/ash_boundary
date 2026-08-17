@@ -2,6 +2,10 @@ defmodule AshBoundary.Transformers.DeclareBoundary do
   @moduledoc """
   Computes the domain's boundary declaration and installs it on the domain
   module. Runs after `AshBoundary.Transformers.ValidateDomain`.
+
+  Domains are declared `top_level?: true`. Ash domains do not nest inside one
+  another, so a domain is a sibling of every other boundary in the application
+  regardless of the namespace it sits under.
   """
 
   use Spark.Dsl.Transformer
@@ -21,6 +25,7 @@ defmodule AshBoundary.Transformers.DeclareBoundary do
       deps: Info.deps(dsl),
       exports: Info.exports(dsl),
       check: Declaration.check_opts(),
+      top_level?: true,
       file: Transformer.get_persisted(dsl, :file),
       line: 1
     )
