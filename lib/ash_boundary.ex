@@ -72,6 +72,23 @@ defmodule AshBoundary do
   violation, and the signal that the relationship wants a code interface or a
   calculation instead. See `deps` below.
 
+  ## Relationships are checked, because aliases are checked
+
+  A cross-domain relationship names a module and calls nothing on it:
+
+      belongs_to :customer, Other.Customer
+
+  To `boundary` that is an *alias reference*, and `boundary` does not check alias
+  references unless asked to — `check: [aliases: false]` is its default. Left alone, that
+  would make the single most important case AshBoundary exists to catch the one case it
+  silently missed: a relationship reaching into another domain's non-exported resource
+  would compile with no warning at all.
+
+  So AshBoundary turns alias checking **on** for every domain it declares. This is a
+  default, not an override: any `boundary: [default: [check: [...]]]` in your `mix.exs` is
+  merged with, not replaced by, and an explicit `check: [aliases: false]` there is
+  respected. Nothing extra is needed in the consuming app.
+
   ## Constraint: resources must be namespaced under the domain
 
   `Boundary.Mix.Classifier` assigns a module to a boundary purely by module-name nesting.

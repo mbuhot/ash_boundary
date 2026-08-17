@@ -21,6 +21,17 @@ defmodule AshBoundary.DeclarationTest do
       assert Keyword.fetch!(opts, :exports) == [Post, Tag]
     end
 
+    test "turns on the alias checking boundary leaves off by default" do
+      # This repo's own `mix.exs` carries no `boundary:` configuration at all, so this is
+      # the library's default and nothing else. Asserting on the *normalized* definition
+      # rather than the raw opts is the point: `check.aliases` is the exact field
+      # `Boundary.Checker` consults before it will report an `:alias_reference` violation.
+      normalized = Boundary.Definition.get(Blog, %{Blog => Declaration.definition(Blog)})
+
+      assert normalized.check.aliases
+      assert Keyword.fetch!(Declaration.definition(Blog).opts, :check) == [aliases: true]
+    end
+
     test "declared?/1 distinguishes boundaries from ordinary modules" do
       assert Declaration.declared?(Blog)
       refute Declaration.declared?(Blog.Post)

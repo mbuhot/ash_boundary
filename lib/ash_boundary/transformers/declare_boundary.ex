@@ -8,6 +8,11 @@ defmodule AshBoundary.Transformers.DeclareBoundary do
   code interface lives on the resource module itself stays internal, which is the
   distinction the whole extension rests on.
 
+  `check` is not taken from the DSL either. Alias references are checked by default,
+  because an Ash relationship *is* an alias reference and `boundary` does not check those
+  unless asked — see `AshBoundary.Declaration.check_opts/0`, which also explains why the
+  project-level `check` config has to be read and merged here rather than replaced.
+
   Installation goes through `AshBoundary.Declaration.declare/2` rather than injecting
   `use Boundary`, which cannot work from a transformer — see that module's docs.
 
@@ -31,6 +36,7 @@ defmodule AshBoundary.Transformers.DeclareBoundary do
     Declaration.declare(Transformer.get_persisted(dsl, :module),
       deps: Info.deps(dsl),
       exports: Info.exports(dsl),
+      check: Declaration.check_opts(),
       file: Transformer.get_persisted(dsl, :file),
       line: 1
     )

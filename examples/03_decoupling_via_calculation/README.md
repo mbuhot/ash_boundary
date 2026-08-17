@@ -195,33 +195,36 @@ decision lives: on the `Customers` side, behind the interface. `Customers` can s
 caching, batching differently, or a completely different storage strategy without `Orders`
 changing at all. A relationship would have put that decision in `Orders`' query.
 
-## You have to ask `boundary` to check aliases
+## Alias checking is on by default
 
-This example's `mix.exs` carries one line that samples 1 and 2 do not need:
+There is a detail underneath this whole example that would otherwise be a trap.
 
-```elixir
-boundary: [default: [check: [aliases: true]]],
-```
-
-**Without it, the BEFORE state compiles silently — no warning, exit 0.** `boundary` does
-not check plain *alias references* by default (`check: [aliases: false]` is its documented
-default): it checks calls and struct expansions, and
+`boundary` does not check plain *alias references* by default — `check: [aliases: false]`
+is its documented default. It checks calls and struct expansions, and
 
 ```elixir
 belongs_to :customer, OtherDomain.Customer
 ```
 
-is neither. The other domain's resource module is named as a value, with nothing called on
-it, so with `boundary`'s defaults a cross-domain relationship is exactly the kind of
-coupling that slips through. This was observed here first-hand: the `antipattern/` tree
-compiled clean until this option was added.
+is neither: the other domain's resource module is named as a value, with nothing called on
+it. So under `boundary`'s own defaults, a cross-domain relationship — the single thing
+this example is about — is exactly the kind of coupling that slips through. This was
+observed here first-hand: the `antipattern/` tree compiled clean, exit 0, no warning.
 
-`boundary` applies the project-level `default:` to every boundary in the app, including the
-ones AshBoundary declares (it is merged when the declaration is read, not when it is
-written), so this one line in `mix.exs` is all it takes. Any real app adopting AshBoundary
-to get rid of cross-domain relationships wants it, and it is cheap: it only *adds* checks,
-and both the shipped state here and samples 1 and 2's demonstrated violations are
-unaffected by it (those are function calls, which are checked either way).
+**AshBoundary enables alias checking for every domain it declares, so this example's
+`mix.exs` configures nothing.** It is not something you have to know about, remember, or
+copy into your own app — which is the point, because the failure mode of forgetting it is
+silence, not an error.
+
+If you *do* set `boundary: [default: [check: [...]]]` in your own `mix.exs`, AshBoundary
+merges its default into your settings rather than replacing them, so a
+`check: [apps: [...]]` of your own keeps working. An explicit
+`check: [aliases: false]` there is respected, on the assumption that anyone writing it
+means it.
+
+Turning alias checking on only *adds* checks: the shipped state here, and samples 1 and 2's
+demonstrated violations, are unaffected (those are function calls, which are checked either
+way).
 
 ## Running it
 

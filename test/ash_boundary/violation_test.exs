@@ -19,7 +19,10 @@ defmodule AshBoundary.ViolationTest do
     AshBoundary.Test.Analytics,
     AshBoundary.Test.Analytics.Metric,
     AshBoundary.Test.Dashboard,
-    AshBoundary.Test.Dashboard.AllowedCaller
+    AshBoundary.Test.Dashboard.AllowedCaller,
+    AshBoundary.Test.Relations,
+    AshBoundary.Test.Relations.AliasCaller,
+    AshBoundary.Test.Relations.Ticket
   ]
 
   test "reaching an exported resource from a declared dep is allowed" do
@@ -63,6 +66,70 @@ defmodule AshBoundary.ViolationTest do
     assert BoundaryCheck.reference_errors(@world, references) == [
              {:not_exported, AshBoundary.Test.Reports.ForbiddenCallerDraft,
               AshBoundary.Test.Blog.Draft}
+           ]
+  end
+
+  test "a bare alias reference to a non-exported resource is caught" do
+    # Every other violation test above proves its point with `Module.__info__(:module)`,
+    # which boundary records as a `:call`. This one names the module and calls *nothing*
+    # on it, which boundary records as an `:alias_reference` — a distinct reference type
+    # that `check: [aliases: false]`, boundary's own default, does not check at all.
+    # AshBoundary defaults it on, so this is caught with no project-level config anywhere.
+    references =
+      BoundaryCheck.capture_references(AshBoundary.Test.Relations.AliasCaller, """
+      defmodule AshBoundary.Test.Relations.AliasCaller do
+        alias AshBoundary.Test.Blog.Comment
+
+        def run, do: Comment
+      end
+      """)
+
+    assert Enum.map(references, & &1.type) == [:alias_reference]
+
+    assert BoundaryCheck.reference_errors(@world, references) == [
+             {:not_exported, AshBoundary.Test.Relations.AliasCaller,
+              AshBoundary.Test.Blog.Comment}
+           ]
+  end
+
+  test "an Ash relationship into another domain's non-exported resource is caught" do
+    # The reason the previous test matters, in the shape a real app writes it. A
+    # `belongs_to` naming a resource in another domain compiles to exactly one reference
+    # to that module, of type `:alias_reference` — nothing is called on it. This is design
+    # rule 3 ("a loaded relationship to a non-exported resource is a real, intended
+    # boundary violation") being enforced rather than merely intended.
+    #
+    # `Relations` declares `deps [Blog]`, so the dependency itself is permitted and
+    # `:not_exported` is the only thing left for the error to be about. The fixture names
+    # no Ash domain: boundary membership comes from module nesting, not from Ash, and
+    # declaring one would only make Ash's "domain does not accept this resource" verifier
+    # complain about a module its domain cannot list before this test compiles it.
+    references =
+      BoundaryCheck.capture_references(AshBoundary.Test.Relations.Ticket, """
+      defmodule AshBoundary.Test.Relations.Ticket do
+        use Ash.Resource, domain: nil
+
+        attributes do
+          uuid_primary_key :id
+        end
+
+        relationships do
+          belongs_to :comment, AshBoundary.Test.Blog.Comment
+        end
+
+        actions do
+          defaults [:read]
+        end
+      end
+      """)
+
+    # Line 9 of the source above is the `belongs_to` line, so this really is the
+    # relationship being recorded and not, say, the `use Ash.Resource` on line 2.
+    assert [%{type: :alias_reference, line: 9}] =
+             Enum.filter(references, &(&1.to == AshBoundary.Test.Blog.Comment))
+
+    assert BoundaryCheck.reference_errors(@world, references) == [
+             {:not_exported, AshBoundary.Test.Relations.Ticket, AshBoundary.Test.Blog.Comment}
            ]
   end
 
@@ -159,7 +226,9 @@ defmodule AshBoundary.ViolationTest do
       AshBoundary.Test.Reports.ForbiddenCaller,
       AshBoundary.Test.Reports.ForbiddenCallerDraft,
       AshBoundary.Test.Isolated.Caller,
-      AshBoundary.Test.Dashboard.AllowedCaller
+      AshBoundary.Test.Dashboard.AllowedCaller,
+      AshBoundary.Test.Relations.AliasCaller,
+      AshBoundary.Test.Relations.Ticket
     ]
   end
 end

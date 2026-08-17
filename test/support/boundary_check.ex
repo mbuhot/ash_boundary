@@ -31,10 +31,17 @@ defmodule AshBoundary.Test.BoundaryCheck do
     previous_tracers = Code.get_compiler_option(:tracers) || []
     Code.put_compiler_option(:tracers, [BoundaryCompiler | previous_tracers])
 
+    # A fixture that defines a struct — any Ash resource does — brings a `defimpl Inspect`
+    # with it, and protocols were already consolidated when the test suite was compiled.
+    # The resulting warning says nothing about the code under test.
+    previously_ignored = Code.get_compiler_option(:ignore_already_consolidated) || false
+    Code.put_compiler_option(:ignore_already_consolidated, true)
+
     try do
       Code.compile_string(source, "#{Macro.underscore(module)}.ex")
     after
       Code.put_compiler_option(:tracers, previous_tracers)
+      Code.put_compiler_option(:ignore_already_consolidated, previously_ignored)
     end
 
     # The tracer's reference table is shared and never cleared between captures,

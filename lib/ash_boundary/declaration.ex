@@ -97,6 +97,9 @@ defmodule AshBoundary.Declaration do
       `:type`, `:check`, `:top_level?` and `:dirty_xrefs` all work as documented
       by `Boundary`.
 
+  Nothing is defaulted here — `:check` included. What AshBoundary passes for a domain,
+  and why it cannot simply be `[aliases: true]`, is `check_opts/0`.
+
   Raises `ArgumentError` if an export does not live under the boundary's namespace,
   since `boundary` has no way to express that.
   """
@@ -137,6 +140,50 @@ defmodule AshBoundary.Declaration do
 
     :ok
   end
+
+  @doc """
+  The `:check` options AshBoundary declares for a domain, defaulting alias checking on.
+
+  `boundary`'s own default is `check: [aliases: false]`: a module *named* without anything
+  being called on it is not checked. That default is wrong for Ash. A relationship
+
+      belongs_to :customer, Other.Customer
+
+  names the other domain's resource module and calls nothing on it, so under `boundary`'s
+  default a cross-domain relationship into a non-exported resource is invisible — it
+  compiles with no warning at all. Since making exactly that reference visible is the
+  point of AshBoundary, alias checking is on by default here.
+
+  ## Why this reads the project config
+
+  `Boundary.Definition` merges the project-level `boundary: [default: [check: ...]]` from
+  `mix.exs` with a boundary's own options using a *shallow* `Map.merge`, so a per-boundary
+  `check:` replaces the project-level one outright instead of extending it. Passing a bare
+  `check: [aliases: true]` would therefore silently discard a consuming app's own
+  `check: [apps: [...]]` for every AshBoundary domain — and only for those.
+
+  So the project-level list is read here and merged, rather than overridden. An explicit
+  `aliases:` in it always wins: an app that has deliberately configured
+  `check: [aliases: false]` has made a decision, and AshBoundary does not overrule it.
+  """
+  @spec check_opts() :: keyword()
+  def check_opts, do: check_opts(project_check())
+
+  @doc """
+  `check_opts/0` against an explicit project-level `check` keyword list.
+
+      iex> AshBoundary.Declaration.check_opts([])
+      [aliases: true]
+
+      iex> AshBoundary.Declaration.check_opts(apps: [:some_app])
+      [aliases: true, apps: [:some_app]]
+
+      iex> AshBoundary.Declaration.check_opts(aliases: false)
+      [aliases: false]
+  """
+  @spec check_opts(keyword()) :: keyword()
+  def check_opts(project_check) when is_list(project_check),
+    do: Keyword.put_new(project_check, :aliases, true)
 
   @doc """
   Converts fully qualified export modules into the boundary-relative form.
@@ -183,4 +230,14 @@ defmodule AshBoundary.Declaration do
   def declared?(module) when is_atom(module), do: not is_nil(definition(module))
 
   defp app, do: Keyword.fetch!(Mix.Project.config(), :app)
+
+  # The same value `Boundary.Definition` uses as the base for every boundary in the
+  # project, read the same way, so that merging into it cannot drift from what boundary
+  # would otherwise have applied on its own.
+  defp project_check do
+    Mix.Project.config()
+    |> Keyword.get(:boundary, [])
+    |> Keyword.get(:default, [])
+    |> Keyword.get(:check, [])
+  end
 end

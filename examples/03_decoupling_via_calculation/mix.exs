@@ -13,20 +13,12 @@ defmodule DecouplingViaCalculation.MixProject do
       # this line itself. Miss it and everything below still compiles and installs
       # correctly, with zero violations ever reported.
       compilers: [:boundary] ++ Mix.compilers(),
-      # REQUIRED for this example, and the one setting a real app replacing cross-domain
-      # relationships needs to know about. `boundary` does not check plain alias
-      # references (`Some.Module` appearing as a value, with nothing called on it) unless
-      # you opt in — `check: [aliases: false]` is its default. An Ash relationship is
-      # exactly that kind of reference:
-      #
-      #     belongs_to :customer, OtherDomain.Customer
-      #
-      # names the other domain's resource module and calls nothing on it, so with
-      # `boundary`'s defaults a cross-domain relationship is invisible to the compiler and
-      # this example's BEFORE state compiles quietly. `boundary` applies this project-level
-      # default to every boundary in the app, including the ones `AshBoundary` declares.
-      # See the README's "You have to ask boundary to check aliases" section.
-      boundary: [default: [check: [aliases: true]]],
+      # Note what is NOT here: any `boundary: [default: [check: [aliases: true]]]` config.
+      # A relationship names a module and calls nothing on it, which `boundary` treats as
+      # an alias reference and does not check by default — so catching this example's
+      # BEFORE state depends entirely on alias checking being on. AshBoundary turns it on
+      # for every domain it declares, so there is nothing to configure here. See the
+      # README's "Alias checking is on by default" section.
       deps: deps()
     ]
   end
