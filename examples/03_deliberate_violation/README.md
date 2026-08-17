@@ -21,7 +21,7 @@ isolated and proven" below.
 | `DeliberateViolation.Violation.Billing` | yes | not compiled by any normal build. Same domain as `Billing`, same honest `deps` line, reaching past it anyway |
 | `DeliberateViolation.Violation.Billing.Invoice` | yes | the alias-style violation: `belongs_to :ledger_entry, ...Accounting.LedgerEntry` |
 | `DeliberateViolation.Violation.Billing.LedgerEntryCaller` | n/a | the call-style violation: `LedgerEntry.create!/1`, called directly |
-| `DeliberateViolation` | n/a | the app's root boundary, plain `use Boundary`, mandatory in every example (see sample 1) |
+| `DeliberateViolation` | n/a | the app's root boundary, plain `use Boundary`, which classifies this module itself |
 
 This mirrors example 3's shape: `Accounting`/`LedgerEntry`/`Summary` here play
 the role `Customers`/`Customer`/`Directory` play there. A facade resource keeps

@@ -1,8 +1,8 @@
-defmodule ExportedVsInternal.Catalog.InternalPricing do
+defmodule Catalog.InternalPricing do
   @moduledoc false
 
   use Ash.Resource,
-    domain: ExportedVsInternal.Catalog,
+    domain: Catalog,
     data_layer: Ash.DataLayer.Ets
 
   ets do

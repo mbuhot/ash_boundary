@@ -284,9 +284,11 @@ choice is what keeps this example's claim absolute.
 
 ## Why the domain is the top-level module
 
-Every example in this series needs a boundary that claims the app's namespace, so
-that no module escapes classification. `BasicBoundary` and `DeliberateViolation`
-do that job in examples 1 and 4. In this example the domain itself does it:
+Every example in this series needs a boundary over each module in the app, so
+that no module escapes classification. `DecouplingViaCalculation` and
+`DeliberateViolation` keep a root boundary for that job, in examples 3 and 4.
+Example 2 has no module outside its two domains' namespaces, so it needs none.
+In this example the domain itself does the job:
 `Example` is both the `Ash.Domain` and the boundary over `Example.*`.
 
 The reason is `Boundary.Checker.validate_dep_allowed/4`:

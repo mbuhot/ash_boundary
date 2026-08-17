@@ -26,7 +26,7 @@ Both states are here:
 | `DecouplingViaCalculation.Orders` | yes | domain that owns orders. `boundary do deps [...Customers] end` |
 | `DecouplingViaCalculation.Orders.Order` | yes | has `attribute :customer_id, :uuid` and no relationship, plus the `:customer_display_name` calculation |
 | `DecouplingViaCalculation.Orders.Calculations.CustomerDisplayName` | no (internal to `Orders`) | the calculation module. The only code in `Orders` that mentions `Customers` at all |
-| `DecouplingViaCalculation` | n/a | the app's root boundary, plain `use Boundary`, mandatory in every example (see sample 1) |
+| `DecouplingViaCalculation` | n/a | the app's root boundary, plain `use Boundary`, which classifies this module itself |
 
 `AshBoundary.Declaration.definition/1` reads the computed declarations back off
 the compiled modules. It returns a map — `%{opts: ..., app: ..., pos: ...,

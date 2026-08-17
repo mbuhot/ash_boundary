@@ -74,9 +74,8 @@ jobs:
 
   # Runs each example's own documented gate independently, in its own directory, with
   # its own deps/_build cache. Everything under examples/ is a fully separate Mix
-  # project (own mix.exs, mix.lock, deps) — see examples/01_exported_vs_internal/README.md's
-  # "Conventions for other examples" section for the shared structure, and each
-  # example's own README for its "Gate" section. Every example's gate is the same four
+  # project (own mix.exs, mix.lock, deps) — see each example's own README for its
+  # "Gate" section. Every example's gate is the same four
   # commands, run in this order from within that example's own directory:
   #   mix deps.get && mix format --check-formatted && mix compile --warnings-as-errors && mix test
   #

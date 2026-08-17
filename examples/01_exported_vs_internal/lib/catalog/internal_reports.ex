@@ -1,9 +1,9 @@
-defmodule ExportedVsInternal.Catalog.InternalReports do
+defmodule Catalog.InternalReports do
   @moduledoc """
   Pricing reports for the catalog domain.
   """
 
-  alias ExportedVsInternal.Catalog.InternalPricing
+  alias Catalog.InternalPricing
 
   @doc """
   Records a cost/margin pair for `sku` and returns the computed sale price.
