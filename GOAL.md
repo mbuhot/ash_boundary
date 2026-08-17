@@ -98,6 +98,78 @@ This is the pattern the whole library exists to make visible and enforceable.
        the core decoupling pattern, shown as a before/after or two variants.
     4. A deliberate boundary violation (reaching into a non-exported module)
        that demonstrates the compiler catching it.
+    5. A Phoenix LiveView app where the web layer may pattern-match on
+       resource structs read from the domain and call the domain's own
+       declared functions, but is forbidden from calling `Ash.*` directly.
+       Added mid-project at the user's request (not part of the original
+       four). Built and shipped as `examples/05_phoenix_liveview`; the
+       mechanism below reflects what was actually verified, not the
+       original plan (two points changed after real research and review).
+
+       **Mechanism, as verified:** no AshBoundary changes needed. The web
+       layer gets a plain `use Boundary, type: :strict` (not an Ash
+       domain), with `deps: [DomainModule, AshPhoenix.Form]`. `type:
+       :strict` alone already forbids any external-app reference not
+       backed by an explicit `deps` entry — an separate `check: [apps:
+       [...]]` allowlist, the original plan, turned out to be redundant
+       under `:strict` and was dropped. `:ash`/`:spark` stay out of
+       `deps`, so any direct reference to them is caught. A plain `use
+       Boundary` does NOT get AshBoundary's `aliases: true` default (that
+       default only applies to domains AshBoundary itself manages), so the
+       web layer's boundary must set `check: [aliases: true]` explicitly
+       or it misses relationship-shaped/bare-alias references the same way
+       unit 11 found domains missed them before the fix.
+
+       **Structural requirement, discovered the hard way:** `boundary`
+       only permits a dependency on a sibling, a parent, or a parent's dep
+       — never on an arbitrary descendant of another top-level boundary.
+       `mix phx.new`'s default layout (`MyAppWeb` top-level, domain nested
+       one level under `MyApp`) makes the web layer and the domain NOT
+       siblings, so the web layer cannot depend on the nested domain
+       directly. Fix: for a single-domain app, make the top-level app
+       module the domain itself (no extra nesting level) so the web layer
+       and the domain are natural top-level siblings. A supervision-tree
+       module that starts the endpoint needs `top_level?: true` to escape
+       being classified as a child of the domain boundary it's nested
+       under.
+
+       Resource attributes in this example stick to plain types (no
+       `Ash.CiString` etc.) so no `Ash.*` struct ever needs to appear in
+       the web layer's pattern-matching surface — a deliberate
+       simplification, not a limitation of the mechanism.
+
+       **Loads:** no `Ash.load` carve-out. An apparent need for it in the
+       web layer is a design smell fixed by a `prepare build(load: [...])`
+       on the domain's read action so the returned struct already comes
+       back fully loaded.
+
+       **Errors:** a second instance of design rule 4's class of
+       limitation — `boundary` has no way to allow `Ash.Error.*` while
+       still blocking `Ash.read!`/`Ash.get!` within the same `:ash`
+       application, since the app-level check has no module granularity.
+       Fix: the domain module is inside the same boundary as Ash, so it
+       translates any Ash error to a plain, domain-owned value (an atom, a
+       string via `Exception.message/1`, a map) before returning, so the
+       web layer only ever pattern-matches on plain data.
+
+       **Forms, as verified (changed from the original plan):** Ash's
+       code interface generation, when a domain has `extensions:
+       [AshBoundary, AshPhoenix]`, auto-generates a `form_to_<name>`
+       function for every `define`d create/update/destroy action,
+       pre-bound to the right resource and action. The web layer calls
+       THIS domain function, never `AshPhoenix.Form.for_create/2` (etc.)
+       directly with the resource module — the original plan assumed the
+       raw resource module would need exporting for form construction;
+       verified research showed Ash already solves this one level up.
+       Bonus: since `form_to_*` only exists for actions the domain chose
+       to `define`, this also stops the web layer from building a form
+       for an arbitrary, non-exported action. One honestly-disclosed
+       residual gap remains: `AshPhoenix.Form.for_create(Resource,
+       :whatever)` called directly still compiles, because the resource
+       stays exported for legitimate struct pattern-matching and
+       `boundary` has no function-level export granularity — a third
+       instance of design rule 4's class of limitation, not a bug to
+       chase further.
 - Docs: README (expand the existing one), moduledocs, and a guide walking
   through the decoupling pattern. Wire up `spark.cheat_sheets` for the
   `boundary` DSL section and include the generated cheat sheet in

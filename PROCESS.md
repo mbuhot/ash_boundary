@@ -50,6 +50,15 @@ already to strip this out; do not reintroduce it.
    transformer, the verifier, export/deps computation, or a sample project
    that demonstrates a violation.
 
+   Don't re-verify what an earlier unit already proved. Once a mechanism has
+   been mutation-tested and confirmed (e.g. "boundary's compiler catches a
+   violation" — settled since units 2-4 and 11), a later unit that merely
+   USES that mechanism only needs its own NEW claims checked (a specific API
+   detail, a specific configuration choice, a specific structural fix) — not
+   another full mutation sweep proving the underlying mechanism still works.
+   Scope each review to what's actually novel in that unit; re-litigating
+   settled mechanisms wastes review budget without adding confidence.
+
 6. **Gate** — implementer and reviewer must both show, on the current tree:
    `mix format --check-formatted` clean, `mix credo --strict` clean,
    `mix dialyzer` clean, `mix test` green, and — when the unit touches a
