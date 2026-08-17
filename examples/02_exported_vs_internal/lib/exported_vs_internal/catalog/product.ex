@@ -1,13 +1,5 @@
 defmodule ExportedVsInternal.Catalog.Product do
-  @moduledoc """
-  Exported resource. Has a domain-level `define` in `ExportedVsInternal.Catalog`'s
-  `resources` block. `AshBoundary` includes this resource in the domain's computed
-  `exports`. Code outside `ExportedVsInternal.Catalog.*` may reference this module
-  directly. Code outside `ExportedVsInternal.Catalog.*` may also call the domain's code
-  interface, `ExportedVsInternal.Catalog.create_product!/1` and
-  `ExportedVsInternal.Catalog.get_product!/1`. See `ExportedVsInternal.Storefront`,
-  which calls the domain's code interface.
-  """
+  @moduledoc false
 
   use Ash.Resource,
     domain: ExportedVsInternal.Catalog,

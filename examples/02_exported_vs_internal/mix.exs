@@ -7,10 +7,6 @@ defmodule ExportedVsInternal.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      # See examples/01_basic_boundary's README: a dependency cannot add a compiler to
-      # a downstream app's own :compilers list, so every app adopting AshBoundary adds
-      # this line itself. Miss it and everything below still compiles and installs
-      # correctly, with zero violations ever reported.
       compilers: [:boundary] ++ Mix.compilers(),
       deps: deps()
     ]

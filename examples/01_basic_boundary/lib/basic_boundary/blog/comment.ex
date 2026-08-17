@@ -1,13 +1,5 @@
 defmodule BasicBoundary.Blog.Comment do
-  @moduledoc """
-  This resource is internal. No domain-level `define` names it in
-  `BasicBoundary.Blog`'s `resources` block. `AshBoundary` leaves it out of the
-  domain's computed `exports`.
-
-  No module outside `BasicBoundary.Blog.*` may reference
-  `BasicBoundary.Blog.Comment`, once `mix.exs` enables the `:boundary`
-  compiler. See the README for how to prove that.
-  """
+  @moduledoc false
 
   use Ash.Resource,
     domain: BasicBoundary.Blog,

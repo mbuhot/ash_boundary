@@ -1,20 +1,12 @@
 defmodule ExportedVsInternal.Storefront do
   @moduledoc """
-  Sits entirely outside `ExportedVsInternal.Catalog`'s namespace. Calls into `Catalog`
-  only through the domain's exported code interface. `AshBoundary` leaves this call path
-  unaffected, the same as `BasicBoundary.Reports` in example 1.
-
-  This module cannot reach `ExportedVsInternal.Catalog.InternalPricing`, either its
-  module directly or its own `code_interface` functions, even though those functions
-  are real, generated, and callable. See the README for that reproduced as a real
-  compiler warning.
+  Storefront code that reads the catalog.
   """
 
   alias ExportedVsInternal.Catalog
 
   @doc """
-  Creates a product and immediately reads it back, entirely through
-  `ExportedVsInternal.Catalog`'s domain-level code interface.
+  Creates a product and reads it back.
   """
   @spec create_and_fetch(String.t(), float()) :: ExportedVsInternal.Catalog.Product.t()
   def create_and_fetch(name, price) do

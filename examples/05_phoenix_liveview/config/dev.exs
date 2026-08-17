@@ -39,11 +39,7 @@ config :example, ExampleWeb.Endpoint,
 # configured to run both http and https servers on
 # different ports.
 
-# Watch source files and reload the browser on change. `mix phx.new --no-assets` leaves this
-# out (there is nothing to bundle), but the `Phoenix.LiveReloader` plug in
-# `ExampleWeb.Endpoint` needs patterns to watch to do anything, and this example keeps live
-# reload working, not merely present. See `ExampleWeb`'s
-# `@dev_only_deps`, which is the boundary-side half of the same story.
+# Watch static and templates for browser reloading.
 config :example, ExampleWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
@@ -56,11 +52,6 @@ config :example, ExampleWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :example, dev_routes: true
 
-# `Ash.DataLayer.Ets` keeps records in the running node's ETS tables, so a freshly started
-# `mix phx.server` has no posts to render. This flag asks `Example.Application` to insert a
-# couple through the domain's own code interface on boot, so hitting http://localhost:4000
-# shows real data. It is read with `Application.get_env/3` rather than `Mix.env()` at
-# runtime, so nothing here depends on Mix being available in a release.
 config :example, seed_posts?: true
 
 # Do not include metadata nor timestamps in development logs
