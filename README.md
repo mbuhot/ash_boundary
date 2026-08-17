@@ -16,31 +16,6 @@ public function on an exported resource, including the functions from its own
 `code_interface` block. A resource with no domain-level `define` stays internal,
 and so do its `code_interface` functions.
 
-## Why
-
-An Ash domain has no enforced public interface. Any module in the application
-can call any action, match any resource struct, and read any attribute.
-
-Each of those references is code you have to find before you can change the
-domain. Rename an attribute, and a struct match in an unrelated LiveView breaks.
-Add a required argument to an action, and every caller breaks. Nothing tells you
-which callers exist, or where they are, until something fails.
-
-AshBoundary makes the interface explicit and enforces it at compile time.
-A domain declares which other domains it depends on.
-The compiler reports each reference that crosses a boundary without a declaration.
-Add `--warnings-as-errors` to turn those reports into a failed build.
-
-The most common violation is a resource in one domain that holds a relationship
-to a resource in another. The fix is to depend on the other domain's public
-interface instead of its internals.
-[`examples/03_decoupling_via_calculation`](examples/03_decoupling_via_calculation)
-is a runnable before-and-after of that change.
-
-AshBoundary only generates the declaration. For what the declaration means, and
-for the options this DSL does not cover, read the
-[`boundary` documentation](https://hexdocs.pm/boundary).
-
 ## Installation
 
 Add `ash_boundary` and `boundary` to the deps in `mix.exs`:
@@ -91,6 +66,8 @@ The `Mix.Tasks.Compile.Boundary` compiler enforces them.
 
 Add the compiler to the project configuration in `mix.exs`:
 
+
+
 ```elixir
 def project do
   [
@@ -100,6 +77,9 @@ def project do
   ]
 end
 ```
+
+The compiler reports a violation as a warning. Pass `--warnings-as-errors` to
+`mix compile` to fail the build on one.
 
 ## Examples
 
@@ -125,6 +105,10 @@ To generate the documentation locally, run:
 ```
 mix docs
 ```
+
+AshBoundary generates a `boundary` declaration. For the semantics of a
+declaration, and for the options this DSL does not generate, see the
+[`boundary` documentation](https://hexdocs.pm/boundary).
 
 ## Status
 
