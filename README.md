@@ -76,7 +76,7 @@ Two examples live in [`examples/`](examples), each its own Mix project:
 - [`01_exported_vs_internal`](examples/01_exported_vs_internal) has two domains. It covers
   exported and internal resources, and a calculation that reads another domain's data through
   that domain's exported interface instead of a relationship.
-- [`04_phoenix_liveview`](examples/04_phoenix_liveview) is a Phoenix application over two
+- [`02_phoenix_liveview`](examples/02_phoenix_liveview) is a Phoenix application over two
   domains. Its web layer reaches both through their exported interfaces and cannot call `Ash.*`.
 
 

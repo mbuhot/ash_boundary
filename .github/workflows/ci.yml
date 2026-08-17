@@ -95,7 +95,7 @@ jobs:
       matrix:
         example:
           - 01_exported_vs_internal
-          - 04_phoenix_liveview
+          - 02_phoenix_liveview
         # Same Elixir/OTP pin as the root `test` job above, for consistency across the
         # whole repo's CI. Each example is its own Mix project, so this is a separate
         # setup-beam install per matrix leg, not a shared toolchain.
@@ -112,12 +112,12 @@ jobs:
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
 
-      # examples/04_phoenix_liveview/mix.exs depends on :lazy_html (only :test), which
+      # examples/02_phoenix_liveview/mix.exs depends on :lazy_html (only :test), which
       # Phoenix.LiveViewTest uses to parse rendered HTML and which compiles a native
       # library. Its own README flags the requirement. Every other example is pure
       # Elixir over Ash.DataLayer.Ets and needs nothing extra here.
       - name: Install C toolchain for :lazy_html (Phoenix example only)
-        if: matrix.example == '04_phoenix_liveview'
+        if: matrix.example == '02_phoenix_liveview'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake
