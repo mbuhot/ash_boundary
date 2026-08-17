@@ -1,16 +1,17 @@
 defmodule DeliberateViolation.Billing.Calculations.LedgerTotal do
   @moduledoc """
-  The **contrast case**: a real `Ash.Resource.Calculation` that reaches across the
-  domain boundary into `DeliberateViolation.Accounting`, exactly as
-  `violation/billing/ledger_entry_caller.ex` does — except this one calls the *exported*
-  `DeliberateViolation.Accounting.ledger_total!/0`, not the internal `LedgerEntry`
-  resource. Same shape of cross-domain call, same `deps` declaration on `Billing`
-  (see `DeliberateViolation.Billing`'s moduledoc), and it compiles clean.
+  This module is the contrast case: a real `Ash.Resource.Calculation` that reaches
+  across the domain boundary into `DeliberateViolation.Accounting`.
+  `violation/billing/ledger_entry_caller.ex` reaches across the same boundary. This
+  module calls the exported `DeliberateViolation.Accounting.ledger_total!/0`. It never
+  calls the internal `LedgerEntry` resource. Both calls share the same shape and the
+  same `deps` declaration on `DeliberateViolation.Billing` (see that module's
+  moduledoc). This module compiles clean.
 
-  This is the module to compare against `violation/billing/ledger_entry_caller.ex` when
-  reading this example's README: the only difference between "compiles clean" and
-  "forbidden reference" is which module on the other side of the line got called, never
-  whether a `deps` entry exists.
+  Compare this module to `violation/billing/ledger_entry_caller.ex` when reading this
+  example's README. The only difference between a clean compile and a forbidden
+  reference is which module on the other side of the line received the call. A `deps`
+  entry alone never decides the outcome.
   """
 
   use Ash.Resource.Calculation

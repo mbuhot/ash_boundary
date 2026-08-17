@@ -1,24 +1,22 @@
 defmodule DecouplingViaCalculation.Customers do
   @moduledoc """
-  The domain that owns customer data, and the *callee* side of this example's decoupling
-  story. It publishes exactly one thing: a purpose-built interface for the questions
-  other domains legitimately need answered about a customer.
+  This domain owns customer data. It is the callee side of this example's
+  decoupling story. It publishes one purpose-built interface. Other domains ask
+  this interface their questions about a customer.
 
-  Two resources, exported very differently (the distinction sample project 2 covers in
-  full):
+  The domain exports two resources very differently:
 
-    * `DecouplingViaCalculation.Customers.Customer` is named by a **bare** `resource`
-      entry below — no domain-level `define` — so `AshBoundary` leaves it out of
-      `exports`. It is the real, ETS-backed resource, and it is invisible outside this
-      namespace. Its attribute names, its actions, its relationships and its struct are
-      all free to change without any other domain being able to depend on them, because
-      no other domain can reach the module at all.
+    * `DecouplingViaCalculation.Customers.Customer` is named by a bare `resource`
+      entry below, with no domain-level `define`. `AshBoundary` leaves it out of
+      `exports`. This is the real, ETS-backed resource. No code outside this
+      namespace can see it. Its attribute names, actions, relationships, and
+      struct stay free to change, because no other domain can reach the module.
 
-    * `DecouplingViaCalculation.Customers.Directory` carries the domain-level `define`s,
-      so it — and this domain module — are the only things this domain exports. It holds
-      no data of its own; it is a deliberately narrow facade of generic actions over
-      `Customer`, and it exists so that `Customer` never has to be exported to give
-      another domain the two answers it actually needs:
+    * `DecouplingViaCalculation.Customers.Directory` carries the domain-level
+      `define`s. This domain exports only `Directory` and the domain module
+      itself. `Directory` holds no data of its own. It is a narrow facade of
+      generic actions over `Customer`. It gives another domain the two answers
+      it needs, without exporting `Customer`:
 
           DecouplingViaCalculation.Customers.register_customer!(first_name, family_name)
           #=> a customer id
@@ -28,20 +26,18 @@ defmodule DecouplingViaCalculation.Customers do
 
   ## Why a facade resource rather than `define`s on `Customer`
 
-  `boundary`'s `exports` are module-level, not function-level (a limitation
-  `AshBoundary`'s own docs call out and accept), so a domain-level `define` on `Customer`
-  would necessarily export the whole `Customer` module: every caller in the app would
-  get its struct, its other actions and its relationships along with the one function
-  that was actually wanted. Putting the cross-domain interface on its own resource keeps
-  the export surface equal to the interface, which is what makes the BEFORE state in this
-  example's README a *permanent* compile error rather than one export away from
-  compiling.
+  `boundary`'s `exports` work at module level. They do not work at function
+  level (`AshBoundary`'s docs state this limitation). A domain-level `define` on
+  `Customer` would export the whole `Customer` module. Every caller in the app
+  would then get its struct, its other actions, and its relationships, along
+  with the one wanted function. A cross-domain interface on its own resource
+  keeps the export surface equal to the interface. This is why the BEFORE state
+  in this example's README is a permanent compile error.
 
-  This is a trade-off, not a rule: a domain whose consumers genuinely need `Customer`
-  records — to receive one from a read action and hand it back to an update action —
-  should just export it with a domain-level `define`, exactly as sample projects 1 and 2
-  do. The facade earns its place when what the other side needs is an *answer*, not a
-  record, which is precisely the case a relationship would otherwise be used for.
+  This is a trade-off. A domain whose consumers genuinely need `Customer`
+  records should export it with a domain-level `define`, as sample projects 1
+  and 2 do. The facade earns its place when the other side needs an answer, and
+  a relationship would otherwise supply the record it does not need.
   """
 
   use Ash.Domain, extensions: [AshBoundary]

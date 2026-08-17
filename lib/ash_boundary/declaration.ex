@@ -1,62 +1,62 @@
 defmodule AshBoundary.Declaration do
   @moduledoc """
-  Installs a [`boundary`](https://hex.pm/packages/boundary) declaration onto a module
-  that is currently being compiled.
+  Installs a [`boundary`](https://hex.pm/packages/boundary) declaration onto a
+  module that is currently being compiled.
 
-  This is the low-level integration point between AshBoundary and the `boundary`
-  library. A Spark transformer computes the `deps` and `exports` lists and calls
-  `declare/2`; the module is then indistinguishable, to `boundary`, from one that
-  had written `use Boundary, deps: ..., exports: ...` by hand.
+  This is the low-level integration point between AshBoundary and the
+  `boundary` library. A Spark transformer computes the `deps` and `exports`
+  lists and calls `declare/2`. After this call, `boundary` treats the module
+  exactly as if it had called `use Boundary, deps: ..., exports: ...` by hand.
 
-  ## Why not just inject `use Boundary`?
+  ## Why not inject `use Boundary`?
 
-  `use Boundary` expands to code that stashes the options in module attributes and
-  registers a `@before_compile Boundary.Definition` hook. The hook is what actually
-  writes the persisted `Boundary` module attribute that the rest of the library reads.
+  `use Boundary` expands to code that stores the options in module attributes
+  and registers a `@before_compile Boundary.Definition` hook. This hook writes
+  the persisted `Boundary` module attribute that the rest of the library reads.
 
-  Spark runs its transformers from *inside* the DSL module's own `@before_compile`
-  hook, and Elixir snapshots the list of `@before_compile` callbacks before invoking
-  any of them. A `use Boundary` injected at that point — via
-  `Spark.Dsl.Transformer.eval/3` or otherwise — therefore registers a hook that is
-  never invoked: the module compiles cleanly and silently ends up with no boundary
-  at all. That failure mode is invisible, which makes it worse than a crash.
+  Spark runs its transformers from inside the DSL module's own `@before_compile`
+  hook. Elixir snapshots the list of `@before_compile` callbacks before invoking
+  any of them. Injecting `use Boundary` at that point registers a hook that
+  Elixir never invokes. The module compiles cleanly. It ends up with no
+  boundary at all. This failure produces no warning and no error.
 
-  So instead of injecting a macro call, this module reproduces the end state of
-  `Boundary.Definition.__before_compile__/1` directly, with plain function calls:
+  `declare/2` reproduces the end state of
+  `Boundary.Definition.__before_compile__/1` directly, with plain function
+  calls:
 
-    * a persisted `Boundary` module attribute holding the definition map, which is
-      what `Boundary.Definition` reads back out of a compiled module, and
-    * an entry in `Boundary.Mix.CompilerState`, which is the in-memory cache
-      `Mix.Tasks.Compile.Boundary` consults during a compilation run. Skipping this
-      is not optional: when the cache exists but has no entry for a module, that
-      module is treated as not being a boundary at all.
+    * A persisted `Boundary` module attribute holding the definition map. This
+      is what `Boundary.Definition` reads back out of a compiled module.
+    * An entry in `Boundary.Mix.CompilerState`, the in-memory cache
+      `Mix.Tasks.Compile.Boundary` consults during a compilation run. Skipping
+      this entry is not optional. When the cache exists but has no entry for a
+      module, `boundary` treats that module as not being a boundary at all.
 
-  Doing the work with function calls rather than injected code has a second benefit.
-  Anything injected into the consuming module is seen by boundary's own compiler
-  tracer, so an injected `use Boundary` would record spurious cross-boundary
-  references from the domain to every module named in it. Calls made from here are
-  made by already-compiled AshBoundary code and are invisible to the tracer.
+  Function calls avoid a second problem. `boundary`'s compiler tracer sees
+  anything injected into the consuming module. An injected `use Boundary`
+  would record spurious cross-boundary references from the domain to every
+  module named in it. Calls made from here are made by already-compiled
+  AshBoundary code, so the tracer never sees them.
 
   ## Exports are relative to the boundary root
 
-  `boundary` treats every entry in `exports` as a name *relative to* the boundary
-  module: `use Boundary, exports: [Post]` on `MyApp.Blog` exports `MyApp.Blog.Post`.
-  Passing the fully qualified `MyApp.Blog.Post` would export
-  `MyApp.Blog.MyApp.Blog.Post`, which does not exist and is reported as an
-  `unknown_export` error rather than failing loudly.
+  `boundary` treats every entry in `exports` as a name relative to the
+  boundary module. `use Boundary, exports: [Post]` on `MyApp.Blog` exports
+  `MyApp.Blog.Post`. Passing the fully qualified `MyApp.Blog.Post` exports
+  `MyApp.Blog.MyApp.Blog.Post`, a module that does not exist. `boundary`
+  reports this as an `unknown_export` error.
 
-  `declare/2` therefore takes fully qualified module names and converts them, so
-  callers never have to think about it. See `relative_exports/2`.
+  `declare/2` takes fully qualified module names and converts them, so callers
+  never handle this conversion. See `relative_exports/2`.
 
-  The boundary module itself is always exported by `boundary`, so it does not need
-  to appear in `exports` and is dropped if passed.
+  `boundary` always exports the boundary module itself. It does not need to
+  appear in `exports`, and `declare/2` drops it if passed.
 
   ## Consuming apps must add the boundary compiler themselves
 
-  Declaring a boundary is not the same as enforcing one. Enforcement lives entirely
-  in `Mix.Tasks.Compile.Boundary`, and a Mix compiler can only be enabled by the
-  project it runs in — a dependency cannot add itself to a downstream app's
-  `:compilers`. So every app using AshBoundary must edit its own `mix.exs`:
+  Declaring a boundary does not enforce one. Enforcement lives entirely in
+  `Mix.Tasks.Compile.Boundary`. A dependency cannot add itself to a downstream
+  app's `:compilers` list. Every app using AshBoundary must edit its own
+  `mix.exs`:
 
       def project do
         [
@@ -65,8 +65,8 @@ defmodule AshBoundary.Declaration do
         ]
       end
 
-  Without it, everything still compiles, the declarations are still installed, and
-  no violation is ever reported.
+  If the `:compilers` list does not include `:boundary`, the build reports no
+  violations, even though the declarations still install correctly.
   """
 
   alias Boundary.Mix.CompilerState

@@ -1,10 +1,10 @@
 defmodule AshBoundary.Info do
   @moduledoc """
-  Introspection for domains extended with `AshBoundary`.
+  Provides introspection for domains extended with `AshBoundary`.
 
-  Every function accepts either a compiled domain module or the in-progress
-  `t:Spark.Dsl.t/0` map a transformer or verifier is handed, so the same code answers
-  the question during compilation and afterwards.
+  Each function accepts a compiled domain module or the in-progress
+  `t:Spark.Dsl.t/0` map that a transformer or verifier receives. The same code
+  works during compilation and after it.
   """
 
   alias Spark.Dsl.Extension

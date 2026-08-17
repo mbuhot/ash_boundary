@@ -1,17 +1,19 @@
 defmodule DecouplingViaCalculation.Antipattern.Customers do
   @moduledoc """
-  **This directory is the BEFORE state: what NOT to do.** Nothing here is compiled by any
-  normal build — see this example's `mix.exs` — because it does not compile. Run
-  `MIX_ENV=antipattern mix compile` to watch it fail, and read this example's README for
-  the walkthrough.
+  This directory holds the BEFORE state. It shows what not to do.
 
-  A perfectly ordinary customers domain, in the state every domain starts in: it owns a
-  `Customer` resource, has no domain-level `define` for it, and therefore exports nothing
-  but itself. That is not an oversight — it is the default `AshBoundary` exists to
-  protect. Nobody outside this domain has needed customer data yet.
+  No normal build compiles this directory. See `mix.exs`.
+  Run `MIX_ENV=antipattern mix compile` to see the failure.
+  Read this example's README for the full walkthrough.
 
-  Then `DecouplingViaCalculation.Antipattern.Orders` decides an order should have a
-  customer, and reaches for the obvious tool: a relationship.
+  This domain owns a `Customer` resource.
+  It has no domain-level `define` for `Customer`.
+  The domain exports nothing but itself.
+  This is the default state that `AshBoundary` protects.
+  No domain outside `Customers` needs customer data yet.
+
+  `DecouplingViaCalculation.Antipattern.Orders` gives an order a customer.
+  It adds a relationship to do this.
   """
 
   use Ash.Domain, extensions: [AshBoundary]

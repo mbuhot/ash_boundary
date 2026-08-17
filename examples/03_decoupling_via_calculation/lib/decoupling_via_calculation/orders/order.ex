@@ -1,24 +1,26 @@
 defmodule DecouplingViaCalculation.Orders.Order do
   @moduledoc """
-  An order, exported by `DecouplingViaCalculation.Orders` via its domain-level `define`s.
+  `DecouplingViaCalculation.Orders` exports this order through its
+  domain-level `define`s.
 
   The AFTER state of this example lives in two lines of this file:
 
-    * `attribute :customer_id, :uuid` — a plain attribute. Not `belongs_to :customer,
-      DecouplingViaCalculation.Customers.Customer`. An order records *which* customer
-      placed it and nothing else; it holds no reference to another domain's resource
-      module, no expectation about that resource's attributes, and no ability to load its
-      relationships.
+    * `attribute :customer_id, :uuid` is a plain attribute. This resource
+      holds no `belongs_to :customer, DecouplingViaCalculation.Customers.Customer`
+      relationship. An order records which customer placed it, and nothing
+      else. It holds no reference to another domain's resource module, no
+      expectation about that resource's attributes, and no ability to load
+      its relationships.
 
-    * `calculate :customer_display_name, :string, ...Calculations.CustomerDisplayName` —
-      the replacement for the relationship. It is an ordinary Ash calculation, loadable
-      exactly like any other (`load: [:customer_display_name]`), and it gets its value by
-      calling `DecouplingViaCalculation.Customers`' exported code interface. See
-      `DecouplingViaCalculation.Orders.Calculations.CustomerDisplayName`.
+    * `calculate :customer_display_name, :string, ...Calculations.CustomerDisplayName`
+      replaces the relationship. It is an ordinary Ash calculation, loadable
+      like any other (`load: [:customer_display_name]`). It gets its value by
+      calling `DecouplingViaCalculation.Customers`' exported code interface.
+      See `DecouplingViaCalculation.Orders.Calculations.CustomerDisplayName`.
 
-  The BEFORE state — the same resource with the relationship, which does not compile — is
-  in this example's `antipattern/` directory, and the README walks through reproducing its
-  failure.
+  The BEFORE state holds the same resource with the relationship. That
+  resource does not compile. It lives in this example's `antipattern/`
+  directory. The README walks through reproducing its failure.
   """
 
   use Ash.Resource,

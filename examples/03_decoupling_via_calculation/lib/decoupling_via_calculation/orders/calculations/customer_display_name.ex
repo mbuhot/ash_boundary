@@ -1,33 +1,37 @@
 defmodule DecouplingViaCalculation.Orders.Calculations.CustomerDisplayName do
   @moduledoc """
-  The replacement for a cross-domain relationship, and the pattern this whole example
-  exists to show: a real `Ash.Resource.Calculation` that gets its value by calling
-  another domain's *exported function*, instead of reaching into that domain's resource.
+  This module replaces a cross-domain relationship. It shows the pattern this
+  whole example teaches: a real `Ash.Resource.Calculation` gets its value by
+  calling another domain's exported function.
 
-  This module is the only place in `DecouplingViaCalculation.Orders` that mentions
-  `DecouplingViaCalculation.Customers` at all — which is why `Orders` needs its single
-  `boundary do deps [DecouplingViaCalculation.Customers] end` entry. Take this file away
-  and the two domains have no compile-time relationship whatsoever.
+  This module is the only place in `DecouplingViaCalculation.Orders` that
+  mentions `DecouplingViaCalculation.Customers`. This is why `Orders` needs
+  its single `boundary do deps [DecouplingViaCalculation.Customers] end`
+  entry. Remove this file and the two domains keep no compile-time
+  relationship.
 
-  What crosses the boundary is a function call with a list of ids in and a map of strings
-  out. What does *not* cross it:
+  What crosses the boundary is one function call: a list of ids in, a map of
+  strings out. These things do not cross it:
 
-    * `DecouplingViaCalculation.Customers.Customer` — never referenced, and not exported,
-      so it could not be referenced even by accident.
-    * Customer attribute names. `first_name` and `family_name` appear nowhere in
-      `Orders`; renaming them is invisible here.
-    * Customer's data layer, actions, filters and relationships. `Orders` issues no query
-      against customer data; it asks a question and gets an answer.
+    * `DecouplingViaCalculation.Customers.Customer`. This module never
+      references it. `Customers` does not export it, so no code can reference
+      it by accident.
+    * Customer attribute names. `first_name` and `family_name` appear nowhere
+      in `Orders`. Renaming them stays invisible here.
+    * Customer's data layer, actions, filters, and relationships. `Orders`
+      issues no query against customer data. It asks a question and gets an
+      answer.
 
-  ## `calculate/3` is handed the whole batch
+  ## `calculate/3` receives the whole batch
 
-  Ash calls `calculate/3` once with *all* the records being loaded, which is why the
-  exported interface takes a list of ids and returns a map: one order or a thousand,
-  loading `:customer_display_name` makes exactly one call into
-  `DecouplingViaCalculation.Customers`. Getting this wrong is the usual criticism of
-  replacing a relationship with a calculation — a relationship can be joined, a naive
-  calculation cannot — so it is worth being explicit that the batching lives in the
-  interface, on the `Customers` side, and can be changed there without `Orders` knowing.
+  Ash calls `calculate/3` once with all the records being loaded. This is why
+  the exported interface takes a list of ids and returns a map. Loading
+  `:customer_display_name` makes exactly one call into
+  `DecouplingViaCalculation.Customers`, for one order or a thousand orders.
+  A relationship can be joined. A naive calculation cannot join. This is a
+  common objection to replacing a relationship with a calculation. The
+  batching logic lives in the interface, on the `Customers` side. It can
+  change there without `Orders` knowing.
   """
 
   use Ash.Resource.Calculation

@@ -1,14 +1,14 @@
 defmodule DeliberateViolation.Accounting.LedgerEntry do
   @moduledoc """
-  The real, ETS-backed resource — and **internal**, because
-  `DeliberateViolation.Accounting` names it with a bare `resource` entry, with no
-  domain-level `define`. This is the module the rest of this example reaches into.
+  This is the real, ETS-backed resource. It is internal.
+  `DeliberateViolation.Accounting` names it with a bare `resource` entry below, with no
+  domain-level `define`. The rest of this example reaches into this module.
 
-  As in sample project 2, being internal does not mean this module has no callable
-  functions of its own: `code_interface` below generates real, ordinary ones. Only where
-  they may be called from is restricted, and only because this module is not exported —
-  `boundary` never inspects how a function came to exist, only whether the module it
-  lives on is exported by its owner boundary.
+  Sample project 2 makes the same point: an internal module can still hold callable
+  functions of its own. `code_interface` below generates real, ordinary functions.
+  Only the caller's location is restricted, because this module is not exported.
+  `boundary` never inspects how a function came to exist. It checks only whether the
+  module the function lives on is exported by its owner boundary.
   """
 
   use Ash.Resource,

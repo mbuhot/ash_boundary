@@ -1,22 +1,23 @@
 defmodule DeliberateViolation.Violation.Billing do
   @moduledoc """
-  **DELIBERATE VIOLATION — not compiled by any normal build. See `mix.exs` and the
-  README.**
+  **DELIBERATE VIOLATION. No normal build compiles this file. See `mix.exs`
+  and the README.**
 
-  This is `DeliberateViolation.Billing`, with the same honest dependency declaration,
-  reaching past it anyway. Note what this domain does *right*: it declares the
-  cross-domain dependency it has, in exactly the reviewable line `AshBoundary` asks for.
+  This module is `DeliberateViolation.Billing`, with the same honest dependency
+  declaration. It reaches past that boundary anyway. This domain declares its
+  cross-domain dependency correctly, in exactly the reviewable line `AshBoundary` asks
+  for:
 
       boundary do
         deps [DeliberateViolation.Accounting]
       end
 
-  Declaring the dep is necessary and not sufficient. It grants access to what
-  `DeliberateViolation.Accounting` *exports* — the domain module and its `Summary`
-  facade — and both `DeliberateViolation.Violation.Billing.Invoice` (a relationship) and
-  `DeliberateViolation.Violation.Billing.LedgerEntryCaller` (a function call) reach past
-  that, straight at the internal `LedgerEntry` resource. That is the violation, twice
-  over, and no `deps` entry makes either instance of it legal.
+  Declaring the dep is necessary. It grants access only to what
+  `DeliberateViolation.Accounting` exports: the domain module and the `Summary`
+  facade. `DeliberateViolation.Violation.Billing.Invoice` (a relationship) and
+  `DeliberateViolation.Violation.Billing.LedgerEntryCaller` (a function call) both
+  reach past that grant, straight at the internal `LedgerEntry` resource. That is the
+  violation, twice over. No `deps` entry makes either instance of it legal.
   """
 
   use Ash.Domain, extensions: [AshBoundary]

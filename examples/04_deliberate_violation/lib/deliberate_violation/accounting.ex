@@ -1,19 +1,20 @@
 defmodule DeliberateViolation.Accounting do
   @moduledoc """
-  The domain that owns ledger data, and the *callee* side of this example. It publishes
-  exactly one thing: a purpose-built summary interface, and keeps the real ledger
+  This domain owns ledger data. It is the callee side of this example.
+
+  It exports one thing: a purpose-built summary interface. It keeps the real ledger
   resource internal.
 
-  Two resources, exported very differently (the distinction sample project 2 covers in
-  full):
+  This domain holds two resources. AshBoundary exports them very differently, a
+  distinction sample project 2 covers in full:
 
-    * `DeliberateViolation.Accounting.LedgerEntry` is named by a **bare** `resource`
-      entry below — no domain-level `define` — so `AshBoundary` leaves it out of
-      `exports`. This is the module `DeliberateViolation.Billing` legitimately never
-      touches, and the module `violation/` reaches into anyway.
+    * `DeliberateViolation.Accounting.LedgerEntry` has a bare `resource` entry below,
+      with no domain-level `define`. AshBoundary leaves this module out of `exports`.
+      `DeliberateViolation.Billing` never touches this module legitimately.
+      `violation/` reaches into this module anyway.
 
-    * `DeliberateViolation.Accounting.Summary` carries the domain-level `define`s, so it
-      — and this domain module — are the only things this domain exports:
+    * `DeliberateViolation.Accounting.Summary` carries the domain-level `define`s.
+      This domain exports only `Summary` and the domain module itself:
 
           DeliberateViolation.Accounting.record_entry!(description, amount)
           #=> a ledger entry id
@@ -21,9 +22,9 @@ defmodule DeliberateViolation.Accounting do
           DeliberateViolation.Accounting.ledger_total!()
           #=> the sum of every recorded amount
 
-  See `examples/03_decoupling_via_calculation`'s `Customers` domain for the full
-  rationale behind this shape (a facade resource rather than `define`s on the internal
-  resource directly) — it applies here unchanged.
+  See the `Customers` domain in `examples/03_decoupling_via_calculation` for the full
+  rationale behind this shape. That example uses a facade resource instead of `define`s
+  on the internal resource directly. The same rationale applies here unchanged.
   """
 
   use Ash.Domain, extensions: [AshBoundary]

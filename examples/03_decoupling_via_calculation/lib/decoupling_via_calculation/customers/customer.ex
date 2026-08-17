@@ -1,21 +1,22 @@
 defmodule DecouplingViaCalculation.Customers.Customer do
   @moduledoc """
-  The real customer resource — and **internal**, because
-  `DecouplingViaCalculation.Customers` names it with a bare `resource` entry, with no
-  domain-level `define`.
+  This is the real customer resource. It is internal.
+  `DecouplingViaCalculation.Customers` names it with a bare `resource` entry.
+  It has no domain-level `define`.
 
-  Everything about its shape is private to the `DecouplingViaCalculation.Customers`
-  boundary, and this example leans on that deliberately: a display name here is
-  `first_name` and `family_name` joined, which is knowledge no other domain has, or
-  could acquire — the `:display_name` calculation below is the only place it exists.
-  Splitting the name differently, renaming an attribute, or moving the whole thing behind
-  a different data layer is a local change, because the only code that can see any of it
-  lives under `DecouplingViaCalculation.Customers.*`.
+  Its shape stays private to the `DecouplingViaCalculation.Customers` boundary.
+  A display name here is `first_name` and `family_name` joined. No other domain
+  has this knowledge or can acquire it. The `:display_name` calculation below is
+  the only place it exists.
+  Splitting the name differently, renaming an attribute, or moving the data to
+  another data layer is a local change. Only code under
+  `DecouplingViaCalculation.Customers.*` can see any of it.
 
-  The `code_interface` block makes `Customer` comfortable to call *from inside its own
-  domain* (`DecouplingViaCalculation.Customers.Directory` is the only caller). As sample
-  project 2 shows in detail, a resource-level `code_interface` has no effect on exports:
-  these functions are real and callable, and only from within this namespace.
+  The `code_interface` block makes `Customer` callable from inside its own
+  domain. `DecouplingViaCalculation.Customers.Directory` is the only caller.
+  A resource-level `code_interface` has no effect on exports (sample project 2
+  covers this in detail). These functions stay callable only from within this
+  namespace.
   """
 
   use Ash.Resource,

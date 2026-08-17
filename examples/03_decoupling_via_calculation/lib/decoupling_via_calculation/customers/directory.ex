@@ -1,28 +1,27 @@
 defmodule DecouplingViaCalculation.Customers.Directory do
   @moduledoc """
-  The `DecouplingViaCalculation.Customers` domain's entire public API: a resource with no
-  data layer and no attributes, holding two generic actions over the internal
-  `DecouplingViaCalculation.Customers.Customer` resource.
+  This resource is the `DecouplingViaCalculation.Customers` domain's entire
+  public API. It has no data layer and no attributes. It holds two generic
+  actions over the internal `DecouplingViaCalculation.Customers.Customer`
+  resource.
 
-  It is the only resource this domain exports (via the domain-level `define`s in
-  `DecouplingViaCalculation.Customers`), which is the point: the exported surface is
-  exactly the interface, and no wider. Other domains get answers — an id, a map of
-  display names — and never a `Customer` struct, an attribute name, or a query.
+  This domain exports only this resource, through the domain-level `define`s
+  in `DecouplingViaCalculation.Customers`. The exported surface equals the
+  interface. Other domains get answers: an id, a map of display names. They
+  never get a `Customer` struct, an attribute name, or a query.
 
-  Both actions are deliberately shaped around what the *caller* needs rather than around
-  the table:
+  Both actions match what the caller needs:
 
-    * `:register` returns the new customer's **id**, not the record, so no other domain
-      ever holds a `Customer` struct.
+    * `:register` returns the new customer's id. It does not return the
+      record. No other domain ever holds a `Customer` struct.
 
-    * `:display_names` takes a **list** of ids and returns a map. That shape exists
-      because the caller is an `Ash.Resource.Calculation`, whose `calculate/3` callback is
-      handed every record in the batch at once (see
-      `DecouplingViaCalculation.Orders.Calculations.CustomerDisplayName`) — a one-id-at-a-time
-      interface would turn one query into one per order. Being able to make that decision
-      here, on this side of the boundary, is a direct benefit of the interface being a
-      function: the batching strategy is `Customers`' business, and changing it changes
-      nothing in `Orders`.
+    * `:display_names` takes a list of ids and returns a map. The caller is an
+      `Ash.Resource.Calculation`. Its `calculate/3` callback receives every
+      record in the batch at once (see
+      `DecouplingViaCalculation.Orders.Calculations.CustomerDisplayName`). A
+      one-id-at-a-time interface would turn one query into one query per
+      order. `Customers` makes this batching decision on its own side of the
+      boundary. Changing the strategy changes nothing in `Orders`.
   """
 
   use Ash.Resource, domain: DecouplingViaCalculation.Customers
