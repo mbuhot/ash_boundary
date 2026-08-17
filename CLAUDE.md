@@ -39,6 +39,10 @@ sentence restates the first for effect. State the fact once and stop.
 Show it as commented-out code in the real source file, with the correct usage
 directly below it. A reader uncomments one line to watch the compiler reject it.
 
+One line of explanation above the commented code, no more. The commented code
+must describe a path the surrounding contract actually allows: never leave a
+clause that could not match, or that implies control flow the code rules out.
+
 Do not build fixture directories, extra `MIX_ENV`s, `elixirc_paths` entries, or
 tests that shell out to `mix compile`. Do not paste captured compiler output
 into a README. The library's own test suite already proves that `boundary`
