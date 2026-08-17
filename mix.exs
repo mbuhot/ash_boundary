@@ -11,17 +11,24 @@ defmodule AshBoundary.MixProject do
       version: @version,
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       description: @description,
       package: package(),
       source_url: @source_url,
       homepage_url: @source_url,
       dialyzer: [
-        plt_add_apps: [:mix, :ex_unit],
+        # `:boundary` is a `runtime: false` dep, so it is not in the PLT by
+        # default and every call AshBoundary makes into it would be reported as
+        # an unknown function.
+        plt_add_apps: [:mix, :ex_unit, :boundary],
         plt_file: {:no_warn, "priv/plts/dialyzer.plt"}
       ]
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help compile.app" to learn about applications.
   def application do
@@ -35,7 +42,7 @@ defmodule AshBoundary.MixProject do
     [
       {:ash, "~> 3.31"},
       {:spark, "~> 2.7"},
-      {:boundary, "~> 0.10", runtime: false},
+      {:boundary, "~> 0.10.4", runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
