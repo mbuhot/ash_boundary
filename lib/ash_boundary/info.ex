@@ -1,10 +1,9 @@
 defmodule AshBoundary.Info do
   @moduledoc """
-  Provides introspection for domains extended with `AshBoundary`.
+  Introspection for domains extended with `AshBoundary`.
 
   Each function accepts a compiled domain module or the in-progress
-  `t:Spark.Dsl.t/0` map that a transformer or verifier receives. The same code
-  works during compilation and after it.
+  `t:Spark.Dsl.t/0` map a transformer receives.
   """
 
   alias Spark.Dsl.Extension
@@ -76,8 +75,5 @@ defmodule AshBoundary.Info do
   def module(domain) when is_atom(domain), do: domain
   def module(domain), do: Extension.get_persisted(domain, :module)
 
-  # `Ash.Domain.Info.resource_references/1` reads the same entities, but is documented as
-  # unsafe to call at compile time; going through `Spark.Dsl.Extension` keeps this usable
-  # from a transformer, where the argument is DSL state rather than a compiled module.
   defp resource_references(domain), do: Extension.get_entities(domain, [:resources])
 end

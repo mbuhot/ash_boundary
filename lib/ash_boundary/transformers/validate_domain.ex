@@ -1,53 +1,8 @@
 defmodule AshBoundary.Transformers.ValidateDomain do
   @moduledoc """
-  Rejects, at compile time, domains that `boundary` could not correctly describe.
-
-  This transformer only validates. It never modifies the DSL state. It runs
-  before `AshBoundary.Transformers.DeclareBoundary`, so nothing installs on a
-  domain that this transformer has already reported as invalid.
-
-  ## Checks
-
-    * No hand-written `use Boundary`. Both `use Boundary` and AshBoundary
-      install the declaration from a `@before_compile` hook. Whichever hook
-      runs last wins silently, so the resulting declaration depends on the
-      order the two `use` calls appear in. This check looks for
-      `Boundary.Definition` among the module's registered `@before_compile`
-      hooks.
-
-    * Resources are nested under the domain. `Boundary.Mix.Classifier` assigns
-      modules to boundaries by name nesting alone. A resource outside the
-      domain's namespace cannot be exported by it. `boundary` cannot protect
-      that resource either. `AshBoundary.Declaration.declare/2` raises for an
-      exported resource in that position, but reports only a generic
-      `ArgumentError` about namespaces. It reports nothing for an unexported
-      resource in that position. This check catches both cases.
-
-    * Every `deps` entry is a boundary. Otherwise there is nothing to check the
-      dependency against. This check accepts both `Ash.Domain`s extended with
-      AshBoundary and modules that call `use Boundary` directly, because the
-      check reads `boundary`'s own persisted definition attribute.
-
-  ## Why this is a transformer, not a `Spark.Dsl.Verifier`
-
-  A verifier looks like the natural home for the `deps` check: verifiers run
-  after the module compiles and are documented as the safe place to reference
-  other modules. Spark runs verifiers from Elixir's `@after_verify` hook, and
-  `Module.ParallelChecker` reports an exception raised there as a warning. The
-  module still compiles, and `mix compile` still exits successfully. A
-  verifier cannot deliver the hard compile-time failure this check must
-  produce, so all three checks live in this transformer.
-
-  Answering "is this dep a boundary?" requires `Code.ensure_compiled/1`, which
-  blocks until the dep compiles. This introduces a compile-time dependency
-  from a domain to each of its declared deps. Recompiling a domain when a dep
-  changes is expected behaviour.
-
-  Two domains listing each other in `deps` does not hang the build. Elixir's
-  parallel compiler detects the cycle, breaks it, and returns
-  `{:error, :unavailable}` from `Code.ensure_compiled/1` for one of the two
-  domains. This transformer reports that result as a cycle error and fails the
-  compilation. `boundary` already treats such a pair as a cycle error.
+  Rejects, at compile time, domains that `boundary` could not correctly
+  describe: a hand-written `use Boundary` alongside the extension, a resource
+  outside the domain's namespace, and a `deps` entry that is not a boundary.
   """
 
   use Spark.Dsl.Transformer
@@ -79,9 +34,6 @@ defmodule AshBoundary.Transformers.ValidateDomain do
     end
   end
 
-  # Manual `use Boundary`
-  # --------------------
-
   defp validate_no_manual_declaration(module) do
     if manual_declaration?(module) do
       {:error,
@@ -110,9 +62,6 @@ defmodule AshBoundary.Transformers.ValidateDomain do
     end
   end
 
-  # `use Boundary` expands to `@before_compile Boundary.Definition` and nothing else that
-  # is observable from here, so the registered hooks are the signal. Elixir normalises a
-  # bare `@before_compile Mod` to `{Mod, :__before_compile__}`, but accept either shape.
   defp manual_declaration?(module) do
     Module.open?(module) and
       module
@@ -123,9 +72,6 @@ defmodule AshBoundary.Transformers.ValidateDomain do
 
   defp hook_module({module, _function}), do: module
   defp hook_module(module), do: module
-
-  # Resource namespacing
-  # --------------------
 
   defp validate_resources_are_nested(dsl, module) do
     prefix = Module.split(module)
@@ -174,9 +120,6 @@ defmodule AshBoundary.Transformers.ValidateDomain do
     Module.concat(module, List.last(Module.split(resource)))
   end
 
-  # `deps` targets
-  # --------------
-
   defp validate_deps_are_boundaries(dsl, module) do
     problems =
       for dep <- Enum.uniq(Info.dep_modules(dsl)),
@@ -194,8 +137,6 @@ defmodule AshBoundary.Transformers.ValidateDomain do
   defp dep_problem(_module, dep) do
     case Code.ensure_compiled(dep) do
       {:module, _module} -> if not Declaration.declared?(dep), do: :not_a_boundary
-      # The dep is real, but is itself mid-compile and waiting on something that is
-      # waiting on us. Elixir breaks the cycle by refusing to block any longer.
       {:error, :unavailable} -> :cycle
       {:error, reason} -> {:missing, reason}
     end

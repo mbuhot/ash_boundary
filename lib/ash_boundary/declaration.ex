@@ -1,76 +1,12 @@
 defmodule AshBoundary.Declaration do
   @moduledoc """
-  Installs a [`boundary`](https://hex.pm/packages/boundary) declaration onto a
-  module that is currently being compiled.
-
-  This is the low-level integration point between AshBoundary and the
-  `boundary` library. A Spark transformer computes the `deps` and `exports`
-  lists and calls `declare/2`. After this call, `boundary` treats the module
-  exactly as if it had called `use Boundary, deps: ..., exports: ...` by hand.
-
-  ## Why not inject `use Boundary`?
-
-  `use Boundary` expands to code that stores the options in module attributes
-  and registers a `@before_compile Boundary.Definition` hook. This hook writes
-  the persisted `Boundary` module attribute that the rest of the library reads.
-
-  Spark runs its transformers from inside the DSL module's own `@before_compile`
-  hook. Elixir snapshots the list of `@before_compile` callbacks before invoking
-  any of them. Injecting `use Boundary` at that point registers a hook that
-  Elixir never invokes. The module compiles cleanly. It ends up with no
-  boundary at all. This failure produces no warning and no error.
-
-  `declare/2` reproduces the end state of
-  `Boundary.Definition.__before_compile__/1` directly, with plain function
-  calls:
-
-    * A persisted `Boundary` module attribute holding the definition map. This
-      is what `Boundary.Definition` reads back out of a compiled module.
-    * An entry in `Boundary.Mix.CompilerState`, the in-memory cache
-      `Mix.Tasks.Compile.Boundary` consults during a compilation run. Skipping
-      this entry is not optional. When the cache exists but has no entry for a
-      module, `boundary` treats that module as not being a boundary at all.
-
-  Function calls avoid a second problem. `boundary`'s compiler tracer sees
-  anything injected into the consuming module. An injected `use Boundary`
-  would record spurious cross-boundary references from the domain to every
-  module named in it. Calls made from here are made by already-compiled
-  AshBoundary code, so the tracer never sees them.
-
-  ## Exports are relative to the boundary root
-
-  `boundary` treats every entry in `exports` as a name relative to the
-  boundary module. `use Boundary, exports: [Post]` on `MyApp.Blog` exports
-  `MyApp.Blog.Post`. Passing the fully qualified `MyApp.Blog.Post` exports
-  `MyApp.Blog.MyApp.Blog.Post`, a module that does not exist. `boundary`
-  reports this as an `unknown_export` error.
-
-  `declare/2` takes fully qualified module names and converts them, so callers
-  never handle this conversion. See `relative_exports/2`.
-
-  `boundary` always exports the boundary module itself. It does not need to
-  appear in `exports`, and `declare/2` drops it if passed.
-
-  ## Consuming apps must add the boundary compiler themselves
-
-  Declaring a boundary does not enforce one. Enforcement lives entirely in
-  `Mix.Tasks.Compile.Boundary`. Every app using AshBoundary must edit its own
-  `mix.exs`:
-
-      def project do
-        [
-          compilers: [:boundary] ++ Mix.compilers(),
-          # ...
-        ]
-      end
-
+  Installs a `boundary` declaration onto a module that is currently being
+  compiled.
   """
 
   alias Boundary.Mix.CompilerState
 
-  @typedoc """
-  The definition map `boundary` stores in the persisted `Boundary` module attribute.
-  """
+  @typedoc "The definition map `boundary` stores in the persisted attribute."
   @type t :: %{
           opts: keyword(),
           pos: %{file: String.t() | nil, line: pos_integer() | nil},
@@ -80,25 +16,16 @@ defmodule AshBoundary.Declaration do
         }
 
   @doc """
-  Declares `module` as a boundary, as if it had called `use Boundary`.
+  Declares `module` as a boundary, as if it had called `use Boundary`. Must be
+  called while `module` is still being compiled.
 
-  Call this while `module` is still being compiled. A Spark transformer runs at
-  that point.
+    * `:exports` - fully qualified modules, converted to the relative form
+      `boundary` expects.
+    * `:file` / `:line` - source position for `boundary`'s error messages.
+    * Any other option passes through to `boundary` untouched.
 
-  Supported options:
-
-    * `:exports` - fully qualified modules to export. Converted to the relative
-      form `boundary` expects.
-    * `:file` / `:line` - the source position used in `boundary`'s error messages.
-    * Every other option passes through to `boundary` untouched, so `:deps`,
-      `:type`, `:check`, `:top_level?` and `:dirty_xrefs` all work as documented
-      by `Boundary`.
-
-  This function applies no defaults, `:check` included. `check_opts/0` explains
-  what AshBoundary passes for a domain.
-
-  Raises `ArgumentError` if an export lives outside the boundary's namespace.
-  `boundary` has no way to express that export.
+  Applies no defaults. Raises `ArgumentError` if an export lives outside the
+  boundary's namespace.
   """
   @spec declare(module(), keyword()) :: :ok
   def declare(module, opts) when is_atom(module) and is_list(opts) do
@@ -139,30 +66,11 @@ defmodule AshBoundary.Declaration do
   end
 
   @doc """
-  The `:check` options AshBoundary declares for a domain, with alias checking on
-  by default.
+  The `:check` options AshBoundary declares for a domain.
 
-  `boundary`'s own default is `check: [aliases: false]`: a bare module reference
-  is unchecked. That default is wrong for Ash. A relationship
-
-      belongs_to :customer, Other.Customer
-
-  names the other domain's resource module and calls no function on it. Under
-  `boundary`'s default, a cross-domain relationship into a non-exported resource
-  compiles with no warning. AshBoundary exists to make that reference visible,
-  so alias checking is on by default here.
-
-  ## Why this reads the project config
-
-  `Boundary.Definition` merges the project-level `boundary: [default: [check: ...]]`
-  from `mix.exs` with a boundary's own options in a shallow `Map.merge`, so a
-  per-boundary `check:` replaces the whole project-level list. A bare
-  `check: [aliases: true]` would silently discard a consuming app's own
-  `check: [apps: [...]]` for every AshBoundary domain.
-
-  So this function reads the project-level list and merges into it. An explicit
-  `aliases:` entry in it always wins: an app that configures
-  `check: [aliases: false]` has made a decision, and AshBoundary honours it.
+  Merges `aliases: true` into the project-level
+  `boundary: [default: [check: ...]]` from `mix.exs`, rather than replacing it.
+  An explicit `aliases:` entry there wins.
   """
   @spec check_opts() :: keyword()
   def check_opts, do: check_opts(project_check())
@@ -186,9 +94,8 @@ defmodule AshBoundary.Declaration do
   @doc """
   Converts fully qualified export modules into the boundary-relative form.
 
-  The boundary module itself is dropped, since `boundary` always exports it.
-  Returns `{:error, modules}` listing the modules outside `boundary`'s
-  namespace, which `boundary` cannot express as exports.
+  Drops the boundary module itself. Returns `{:error, modules}` for modules
+  outside `boundary`'s namespace.
   """
   @spec relative_exports(module(), [module()]) :: {:ok, [module()]} | {:error, [module()]}
   def relative_exports(boundary, exports) when is_atom(boundary) and is_list(exports) do
@@ -207,11 +114,7 @@ defmodule AshBoundary.Declaration do
   end
 
   @doc """
-  Reads back the boundary definition installed on a compiled module.
-
-  Returns `nil` when the module is not a boundary. This is the same persisted
-  attribute `Boundary.Definition` reads, so a non-`nil` result means `boundary`
-  itself recognises the module.
+  Reads back the boundary definition installed on a compiled module, or `nil`.
   """
   @spec definition(module()) :: t() | nil
   def definition(module) when is_atom(module) do
@@ -229,9 +132,6 @@ defmodule AshBoundary.Declaration do
 
   defp app, do: Keyword.fetch!(Mix.Project.config(), :app)
 
-  # The same value `Boundary.Definition` uses as the base for every boundary in the
-  # project, read the same way, so that merging into it cannot drift from what boundary
-  # would otherwise have applied on its own.
   defp project_check do
     Mix.Project.config()
     |> Keyword.get(:boundary, [])

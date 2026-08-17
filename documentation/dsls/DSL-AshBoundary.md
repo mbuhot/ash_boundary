@@ -46,26 +46,16 @@ Add the `:boundary` compiler to your project configuration:
   * All other modules in the domain's namespace are internal.
   * Referencing another domain requires an explicit `boundary` dep.
 
-A resource whose only code interface is declared on the resource module itself
-(`code_interface do ... end` inside `use Ash.Resource`) stays internal.
+`boundary` exports modules, not functions, so a `define` publishes every
+public function on that resource module.
 
-A `define` publishes the whole resource module, not only the actions it names:
-`boundary` exports modules, not functions. Outside code can call any public
-function on an exported resource, including the functions from its own
-`code_interface` block. There is no way to export one action and withhold
-another on the same module.
+Exports do not propagate. A relationship to a non-exported resource is a
+violation, and AshBoundary sets `check: [aliases: true]` so `boundary` reports
+it.
 
-Exports do not propagate through relationships. If an exported resource has a
-relationship to a non-exported resource, loading that relationship from
-outside the domain is a violation.
-
-AshBoundary sets `check: [aliases: true]`, so a cross-domain relationship is
-checked like any other reference.
-
-Resources must be namespaced under their domain. AshBoundary raises at compile
-time otherwise, since `boundary` can neither export nor protect a module
-outside the namespace.
-
+Resources must be namespaced under their domain. AshBoundary raises otherwise,
+since `boundary` can neither export nor protect a module outside the
+namespace.
 
 
 ## boundary
