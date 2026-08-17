@@ -64,27 +64,21 @@ defp check_external_dep?(view, reference, from_boundary) do
 end
 ```
 
-Four facts follow. This example depends on all of them.
+Three facts follow. This example depends on all of them.
 
-1. **`type: :strict` checks every other application.** Under `:strict`, `deps`
-   must name every application the boundary references. The `boundary` default
-   is `type: :relaxed`. Under `:relaxed`, cross-application references are
-   unrestricted. That default is why Ash resources call `:ash` and `:spark`
-   without friction today. It is also why an unconfigured LiveView can.
+1. **The default is to check no other application.** The `boundary` default is
+   `type: :relaxed`, and under it cross-application references are unrestricted.
+   That default is why Ash resources call `:ash` and `:spark` without friction
+   today. It is also why an unconfigured LiveView can.
 
 2. **`check: [apps: [...]]` is not an allowlist.** It names the applications to
    start checking. Each application in the list then needs explicit `deps`
    entries. `deps` is the allowlist. `Boundary`'s own moduledoc states this:
    "The check apps list contains additional applications which are always
    checked. Any calls to given applications must be explicitly allowed via the
-   `:deps` option." An `apps:` list that omits `:ash` therefore does nothing.
-   Omitting an application from `check.apps` is how you stop checking it.
+   `:deps` option." An application left out of the list is not checked at all.
 
-3. **Under `type: :strict`, `check: [apps: [...]]` is redundant.** The `or`
-   above short-circuits on `type == :strict`. A strict boundary already checks
-   every application. `ExampleWeb` sets no `check.apps`. That is deliberate.
-
-4. **You cannot restrict `:boundary` itself.** The first clause excludes it. An
+3. **You cannot restrict `:boundary` itself.** The first clause excludes it. An
    `apps:` entry for `:boundary` does nothing. `Boundary`'s moduledoc says the
    same about `:elixir` and pure Erlang applications.
    `Mix.Tasks.Compile.Boundary` also excludes `:elixir`, `:stdlib`, `:kernel`,
@@ -101,93 +95,39 @@ From `lib/example_web.ex`:
 
 ```elixir
 use Boundary,
-  type: :strict,
-  check: [aliases: true],
-  deps: [{Mix, :compile}] ++ @domain_deps ++ @framework_deps ++ @dev_only_deps ++ ...,
+  check: [aliases: true, apps: [:ash, :spark]],
+  deps: [Example, AshPhoenix.Form],
   exports: [Endpoint, Telemetry]
 ```
 
-`@domain_deps` is `[Example, AshPhoenix.Form]`. `@framework_deps` holds the
-30 Phoenix, Plug, and Telemetry entries that the generated web tier references.
-`@dev_only_deps` is `if Mix.env() == :dev, do: [Phoenix.LiveReloader], else: []`.
+`:ash` and `:spark` are checked, and neither appears in `deps`. That is the
+enforcement: any `Ash.*` reference from this namespace is a violation. Phoenix,
+Plug, ExUnit and Mix are not in `check.apps`, so they are not checked and need no
+entries at all. `deps` names the two things the web layer may reach: the
+`Example` domain, and `AshPhoenix.Form`.
 
-`:ash` and `:spark` do not appear in the list. That absence is the enforcement.
+`type` keeps its default, `:relaxed`. A `type: :strict` boundary checks every
+other application instead, so `deps` then has to name every Phoenix, Plug and
+Telemetry module the generated web tier references. That includes the ones
+`use Phoenix.Endpoint` and `use Phoenix.Router` reference on your behalf, such as
+`Plug.Builder` and `Phoenix.Transports.WebSocket`. That is roughly thirty entries
+to maintain, and a Phoenix upgrade can change which are needed. Naming two
+applications locks `:ash` out with nothing to maintain.
 
-Three details in that declaration are worth copying.
-
-**`check: [aliases: true]`.** The `boundary` default is `aliases: false`. Under
-that default, `boundary` does not check a reference that only names a module and
-calls nothing. This option is not decoration. `ExampleWeb.AshAliasReference` in
+**`check: [aliases: true]` is not decoration.** The `boundary` default is
+`aliases: false`. Under that default, `boundary` does not check a reference that
+only names a module and calls nothing. `ExampleWeb.AshAliasReference` in
 `violation/` returns the `Ash.Query` module as a value, and a caller can reach
-Ash through that value with `apply/3`. Plain `type: :strict` compiles that module
-clean. With `check: [aliases: true]`, `boundary` reports it. Both directions were
-verified by compiling them. AshBoundary turns alias checking on for every domain
-it manages, and this boundary matches that posture.
-
-Note that a plain `use Boundary` does not inherit that default. AshBoundary sets
-`aliases: true` in the declaration it generates for a domain, and it changes
-nothing for a boundary you declare yourself. `ExampleWeb` is a plain boundary, so
-it has to opt in. The experiment above is the evidence: without the option, this
-boundary missed the alias reference that every AshBoundary-managed domain in
-examples 1 to 4 would have caught.
-
-**`{Mix, :compile}`.** The `Mix.env()` call that builds `@dev_only_deps` is a
-reference into the `:mix` application. `:strict` checks it. A compile-time-only
-entry keeps a runtime `Mix.env()` call in a LiveView a violation. A runtime call
-to Mix is unsafe in a release. `Boundary`'s docs recommend this narrowing for
-`:mix`.
-
-**Write an env-conditional entry inline, not in a module attribute.**
-`boundary`'s tracer skips alias references inside the declaration it generates.
-The guard is `unless env.function == {:boundary, 1}` in
-`Mix.Tasks.Compile.Boundary.trace/2`. An alias in a module attribute is an
-ordinary reference, and `boundary` checks it. The test-only entries show this
-clearly. `ExUnit.CaseTemplate` exists in every env. A `@test_only_deps`
-attribute therefore reports a forbidden reference in `:dev` and `:prod`, where
-the attribute value is `[]`. `@dev_only_deps` avoids the same trap by accident:
-`Phoenix.LiveReloader` does not exist outside `:dev`, and `boundary` treats a
-reference to a module it cannot find as an in-app reference. Full runtime deps
-such as `Example` are safe in attributes, which is why the groups above
-stay readable.
-
-### What strict costs, and the alternative to prefer
-
-`@framework_deps` contains entries such as `Plug.Builder`, `Plug.Debugger`,
-`Phoenix.Config`, and `Phoenix.Transports.WebSocket`. No file in
-`lib/example_web/` names any of those four. `use Phoenix.Endpoint` and
-`use Phoenix.Router` reference them for you. Every entry in the list is there
-because a real reference failed without it. A Phoenix upgrade that changes those
-internals will require a change to the list.
-
-Not every entry is invisible, though. `Phoenix.Flash` is in the list because
-`lib/example_web/components/core_components.ex:61` calls
-`Phoenix.Flash.get(@flash, @kind)` outright, in the flash-group component that
-`mix phx.new` generates. That is an ordinary, visible reference in this app's own
-source. The cost of `:strict` is that both kinds of entry — the framework
-internals you never wrote, and the framework calls you did — have to be named.
-
-There is a surgical alternative, and a real application should consider it:
-
-```elixir
-use Boundary,
-  check: [apps: [:ash, :spark], aliases: true],
-  deps: [Example]
-```
-
-`type` keeps the default `:relaxed`, so Phoenix, Plug, and every other
-application stay unrestricted and the list needs no maintenance. `boundary`
-checks `:ash` and `:spark` only, and `deps` names only `Example`, so every
-`Ash.*` reference is still a violation. This example does not ship that variant
-as a second module, because shipping two competing implementations of one idea
-teaches less than one. `ExampleWeb` uses `:strict` for two reasons. This example
-must show the strongest available enforcement and its real cost. `:strict` also
-locks out every application that no one thought to name.
+Ash through that value with `apply/3`. With `aliases: true`, `boundary` reports
+it. AshBoundary turns alias checking on for every domain it manages, and this
+boundary matches that posture. A plain `use Boundary` inherits nothing from
+AshBoundary, so `ExampleWeb` opts in itself.
 
 ## Two tiers: `:ash` is forbidden, `:ash_phoenix` is allowed
 
-`deps` lists `AshPhoenix.Form`. It does not list `Ash`. This works because
-`:ash_phoenix` is a separate OTP application from `:ash`, and the external check
-works per application.
+`deps` lists `AshPhoenix.Form`. It does not list `Ash`, and `check.apps` names
+`:ash` but not `:ash_phoenix`. This works because `:ash_phoenix` is a separate
+OTP application from `:ash`, and the external check works per application.
 
 This is a deliberate compromise. It is not "zero Ash surface, full stop".
 Building a form, casting user input, and revalidating on each keystroke are
@@ -426,7 +366,7 @@ whatever landed in it.
 | `Example.Post` | `Example` | exported through domain-level `define`s. Plain attribute types only. `:list_published` and `:by_id` both use `prepare build(load: [...])` |
 | `Example.Post.Calculations.Excerpt` | `Example` | module calculation. Inside the domain, so it can use `Ash.*` |
 | `Example.Application` | own | supervision tree. `deps: [Example, ExampleWeb]`. Seeds two posts in `:dev` only |
-| `ExampleWeb` | own, `type: :strict` | the boundary this example is about. `exports: [Endpoint, Telemetry]` |
+| `ExampleWeb` | own | the boundary this example is about. Checks `:ash` and `:spark`. `exports: [Endpoint, Telemetry]` |
 | `ExampleWeb.PostLive` | `ExampleWeb` | the LiveView. Lists, selects, and creates posts with no `Ash.*` reference |
 | `ExampleWeb.ConnCase` | `ExampleWeb` | test support, compiled in `:test` only |
 | `ExampleWeb.{Endpoint, Router, Telemetry, Layouts, CoreComponents, ErrorHTML, ErrorJSON}` | `ExampleWeb` | as `mix phx.new` generates them |
@@ -466,35 +406,35 @@ $ MIX_ENV=violation mix compile --warnings-as-errors
 ...
 warning: forbidden reference to Ash.Error.Invalid
   (references from ExampleWeb to Ash.Error.Invalid are not allowed)
-  violation/example_web/live/ash_error_match_live.ex:38
+  violation/example_web/live/ash_error_match_live.ex:18
 
 warning: forbidden reference to Ash
   (references from ExampleWeb to Ash are not allowed)
-  violation/example_web/live/ash_load_live.ex:29
+  violation/example_web/live/ash_load_live.ex:11
 
 warning: forbidden reference to Ash
   (references from ExampleWeb to Ash are not allowed)
-  violation/example_web/live/ash_read_live.ex:32
+  violation/example_web/live/ash_read_live.ex:11
 
 warning: forbidden reference to Ash.Expr
   (references from ExampleWeb to Ash.Expr are not allowed)
-  violation/example_web/live/ash_read_live.ex:38
+  violation/example_web/live/ash_read_live.ex:16
 
 warning: forbidden reference to Ash.Query
   (references from ExampleWeb to Ash.Query are not allowed)
-  violation/example_web/live/ash_read_live.ex:38
+  violation/example_web/live/ash_read_live.ex:16
 
 warning: forbidden reference to Ash.Query.Call
   (references from ExampleWeb to Ash.Query.Call are not allowed)
-  violation/example_web/live/ash_read_live.ex:38
+  violation/example_web/live/ash_read_live.ex:16
 
 warning: forbidden reference to Ash
   (references from ExampleWeb to Ash are not allowed)
-  violation/example_web/live/ash_read_live.ex:39
+  violation/example_web/live/ash_read_live.ex:17
 
 warning: forbidden reference to Ash.Query
   (references from ExampleWeb to Ash.Query are not allowed)
-  violation/example_web/live/ash_alias_reference.ex:23
+  violation/example_web/live/ash_alias_reference.ex:5
 ```
 
 The exit code is 1.
@@ -532,10 +472,10 @@ $ MIX_ENV=undefined_form mix compile --warnings-as-errors
           * form_to_list_posts/0
 
     │
- 28 │     {:ok, assign(socket, form: to_form(Example.form_to_moderate_post(as: "post")))}
+  9 │     {:ok, assign(socket, form: to_form(Example.form_to_moderate_post(as: "post")))}
     │                                                ~
     │
-    └─ violation_form/example_web/live/undefined_form_live.ex:28:48: ExampleWeb.UndefinedFormLive.mount/3
+    └─ violation_form/example_web/live/undefined_form_live.ex:9:48: ExampleWeb.UndefinedFormLive.mount/3
 
 Compilation failed due to warnings while using the --warnings-as-errors option
 ```

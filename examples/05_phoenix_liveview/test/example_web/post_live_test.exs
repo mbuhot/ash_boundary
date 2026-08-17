@@ -1,14 +1,4 @@
 defmodule ExampleWeb.PostLiveTest do
-  @moduledoc """
-  Proof that the happy path is a real, working LiveView and not just something that compiles.
-
-  Each assertion here reads data that the LiveView obtained through `Example`'s exported
-  functions and through `AshPhoenix.Form`. Those are the two things `ExampleWeb`'s boundary
-  allows. No file in `lib/example_web/` holds an `Ash.*` reference.
-  `ExampleWeb.AshViolationTest` is the companion proof, that the compiler rejects the forbidden
-  alternatives.
-  """
-
   use ExampleWeb.ConnCase, async: false
 
   setup do
@@ -29,9 +19,6 @@ defmodule ExampleWeb.PostLiveTest do
     assert html =~ "1 published"
     assert html =~ "Boundaries for Ash domains"
     assert html =~ "by mbuhot"
-    # The excerpt calculation, truncated at 40 bytes by
-    # `Example.Post.Calculations.Excerpt`, and the `expr/1` word count. Neither is loaded
-    # by default; both arrive loaded because the read action prepares them.
     assert html =~ "A body long enough that the excerpt calc..."
     assert html =~ "12 words"
   end
@@ -76,7 +63,6 @@ defmodule ExampleWeb.PostLiveTest do
     assert html =~ "Written from a form"
     assert html =~ "1 published"
 
-    # And it really is in the domain, not just on the page.
     assert ["Written from a form"] == Example.published_post_titles()
   end
 
@@ -88,9 +74,6 @@ defmodule ExampleWeb.PostLiveTest do
       |> form("#post-form", post: %{title: "", author: "", body: ""})
       |> render_submit()
 
-    # `AshPhoenix.Form.submit/2` returned `{:error, form}`. That is a form, not an
-    # `%Ash.Error{}`. The errors reach the template as `{message, opts}` tuples, which is what
-    # `ExampleWeb.CoreComponents.translate_error/1` already renders.
     assert html =~ "is required"
     assert Example.published_post_titles() == []
   end

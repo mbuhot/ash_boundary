@@ -1,19 +1,5 @@
 defmodule Example.Application do
-  @moduledoc """
-  The OTP application callback module, and a boundary of its own.
-
-  `start/2` below names modules from every corner of the app, such as `ExampleWeb.Telemetry` and
-  `ExampleWeb.Endpoint`. It therefore needs `deps` that no other boundary should have. Its own
-  boundary declares those deps once, here. Without it, the deps must go into `Example`'s or
-  `ExampleWeb`'s list, where they would widen what the rest of the app can reference.
-  `Boundary`'s own moduledoc recommends this arrangement for this module.
-
-  `top_level?: true` promotes this module out of the `Example` boundary, which would otherwise
-  claim it by name nesting. `Example` is the Ash domain in this example, and this module must not
-  live inside it. A supervision tree that starts the endpoint is not part of the domain, and the
-  domain must not gain a dep on `ExampleWeb` to accommodate it. The promotion makes this module a
-  sibling of `Example` and `ExampleWeb`, which is what lets it declare deps on both.
-  """
+  @moduledoc false
 
   use Application
 
@@ -41,11 +27,6 @@ defmodule Example.Application do
     end
   end
 
-  # `Ash.DataLayer.Ets` stores records in the running node's ETS tables, so `mix phx.server`
-  # starts with an empty blog. Seeding here (enabled by `config :example, seed_posts?: true`
-  # in `config/dev.exs` only) means http://localhost:4000 shows real records rather than an
-  # empty list. Note this goes through `Example`'s exported code interface, like every
-  # other caller in this example.
   defp maybe_seed_posts do
     if Application.get_env(:example, :seed_posts?, false) do
       Example.create_post!(%{

@@ -1,23 +1,4 @@
 defmodule ExampleWeb.Endpoint do
-  @moduledoc """
-  The endpoint, exactly as `mix phx.new` generated it. This includes the dev-only
-  `Phoenix.LiveReloader` plug below.
-
-  It is worth knowing why that plug is interesting under a `:strict` boundary, because it is
-  the one entry in `ExampleWeb`'s `deps` list that cannot be written unconditionally.
-  `:phoenix_live_reload` is an `only: :dev` dependency, so `Phoenix.LiveReloader` exists as a
-  module in `:dev` and does not exist in `:test` or `:prod`; a `deps` entry naming a module
-  that does not exist in the env currently being compiled is itself an error
-  (`unknown boundary Phoenix.LiveReloader is listed as a dependency`).
-
-  The fix is ordinary Elixir, not a boundary concession: the options passed to `use Boundary`
-  are an expression evaluated at compile time, and `_build/dev`, `_build/test` and
-  `_build/prod` are separate compilations, so the entry is added with
-  `if(Mix.env() == :dev, do: [Phoenix.LiveReloader], else: [])`. See `ExampleWeb`. Any
-  env-scoped dependency needs the same treatment, for the same reason any other env-specific
-  Mix configuration does.
-  """
-
   use Phoenix.Endpoint, otp_app: :example
 
   # The session will be stored in the cookie and signed,
