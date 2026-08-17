@@ -52,8 +52,24 @@ defmodule AshBoundary.ExtensionTest do
       refute Blog.Comment in Boundary.Definition.get(Blog, nil).exports
     end
 
+    test "a resource with no code interface anywhere also stays internal" do
+      # `Draft` has neither a domain-level `define` nor a resource-level
+      # `code_interface`. It is a simpler case than `Comment` above (no code interface
+      # at all, rather than one that just lives in the wrong place), and should be
+      # excluded from exports for the same reason: no domain-level `define`.
+      assert Ash.Resource.Info.interfaces(Blog.Draft) == []
+      refute Blog.Draft in Boundary.Definition.get(Blog, nil).exports
+    end
+
+    test "a domain-level `define` and a resource-level `code_interface` coexist without conflict" do
+      # `Tag` has both a domain-level `define` (exporting it) and its own
+      # resource-level `code_interface`. Neither one excludes the other.
+      assert Ash.Resource.Info.interfaces(Blog.Tag) != []
+      assert Blog.Tag in Boundary.Definition.get(Blog, nil).exports
+    end
+
     test "the exports are exactly the domain and its publicly-defined resources" do
-      assert Info.exports(Blog) == [Blog, Blog.Post]
+      assert Info.exports(Blog) == [Blog, Blog.Post, Blog.Tag]
     end
 
     test "the boundary root is not listed, because `boundary` exports it implicitly" do
@@ -77,6 +93,26 @@ defmodule AshBoundary.ExtensionTest do
       assert Info.deps(AshBoundary.Test.Reports) == [Blog]
       assert Info.deps(AshBoundary.Test.Archive) == [{Blog, :compile}]
       assert Info.dep_modules(AshBoundary.Test.Archive) == [Blog]
+    end
+
+    test "a domain can list more than one dep, and each survives the round trip" do
+      # `Dashboard` depends on two independent domains at once (`Blog` and
+      # `Analytics`), each with its own resources and exports computed
+      # independently. This is the composition case beyond a single dependency.
+      assert Info.deps(AshBoundary.Test.Dashboard) == [
+               AshBoundary.Test.Blog,
+               AshBoundary.Test.Analytics
+             ]
+
+      assert Info.dep_modules(AshBoundary.Test.Dashboard) == [
+               AshBoundary.Test.Blog,
+               AshBoundary.Test.Analytics
+             ]
+
+      assert Boundary.Definition.get(AshBoundary.Test.Dashboard, nil).deps == [
+               {AshBoundary.Test.Blog, :runtime},
+               {AshBoundary.Test.Analytics, :runtime}
+             ]
     end
 
     test "the idiomatic parens-free form survives `mix format`" do

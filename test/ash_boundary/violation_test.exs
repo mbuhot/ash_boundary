@@ -8,11 +8,18 @@ defmodule AshBoundary.ViolationTest do
     AshBoundary.Test.Blog,
     AshBoundary.Test.Blog.Post,
     AshBoundary.Test.Blog.Comment,
+    AshBoundary.Test.Blog.Draft,
+    AshBoundary.Test.Blog.Tag,
     AshBoundary.Test.Reports,
     AshBoundary.Test.Reports.AllowedCaller,
     AshBoundary.Test.Reports.ForbiddenCaller,
+    AshBoundary.Test.Reports.ForbiddenCallerDraft,
     AshBoundary.Test.Isolated,
-    AshBoundary.Test.Isolated.Caller
+    AshBoundary.Test.Isolated.Caller,
+    AshBoundary.Test.Analytics,
+    AshBoundary.Test.Analytics.Metric,
+    AshBoundary.Test.Dashboard,
+    AshBoundary.Test.Dashboard.AllowedCaller
   ]
 
   test "reaching an exported resource from a declared dep is allowed" do
@@ -39,6 +46,43 @@ defmodule AshBoundary.ViolationTest do
              {:not_exported, AshBoundary.Test.Reports.ForbiddenCaller,
               AshBoundary.Test.Blog.Comment}
            ]
+  end
+
+  test "reaching a resource with no code interface anywhere is caught the same way" do
+    # `Draft` has neither a domain-level `define` nor a resource-level
+    # `code_interface` — an even more basic case than `Comment`, which at least has
+    # a resource-level one. Both are equally non-exported, and both are caught the
+    # same way.
+    references =
+      BoundaryCheck.capture_references(AshBoundary.Test.Reports.ForbiddenCallerDraft, """
+      defmodule AshBoundary.Test.Reports.ForbiddenCallerDraft do
+        def run, do: AshBoundary.Test.Blog.Draft.__info__(:module)
+      end
+      """)
+
+    assert BoundaryCheck.reference_errors(@world, references) == [
+             {:not_exported, AshBoundary.Test.Reports.ForbiddenCallerDraft,
+              AshBoundary.Test.Blog.Draft}
+           ]
+  end
+
+  test "depending on two domains at once allows reaching each one's exports independently" do
+    # `Dashboard` declares `deps [Blog, Analytics]` — two independent domains, each
+    # contributing its own exported resource. This proves export/deps composition
+    # holds beyond a single dependency, not just that two separate single-dep tests
+    # each pass on their own.
+    references =
+      BoundaryCheck.capture_references(AshBoundary.Test.Dashboard.AllowedCaller, """
+      defmodule AshBoundary.Test.Dashboard.AllowedCaller do
+        def run do
+          {AshBoundary.Test.Blog.Post.__info__(:module),
+           AshBoundary.Test.Analytics.Metric.__info__(:module)}
+        end
+      end
+      """)
+
+    assert references != []
+    assert BoundaryCheck.reference_errors(@world, references) == []
   end
 
   test "reaching another boundary at all without declaring it as a dep is caught" do
@@ -113,7 +157,9 @@ defmodule AshBoundary.ViolationTest do
     [
       AshBoundary.Test.Reports.AllowedCaller,
       AshBoundary.Test.Reports.ForbiddenCaller,
-      AshBoundary.Test.Isolated.Caller
+      AshBoundary.Test.Reports.ForbiddenCallerDraft,
+      AshBoundary.Test.Isolated.Caller,
+      AshBoundary.Test.Dashboard.AllowedCaller
     ]
   end
 end

@@ -18,7 +18,7 @@ defmodule AshBoundary.DeclarationTest do
 
       assert String.ends_with?(file, "test/support/blog.ex")
       # Stored relative to the boundary root, which is what `boundary` expects.
-      assert Keyword.fetch!(opts, :exports) == [Post]
+      assert Keyword.fetch!(opts, :exports) == [Post, Tag]
     end
 
     test "declared?/1 distinguishes boundaries from ordinary modules" do
