@@ -5,7 +5,7 @@ defmodule ExampleWeb.PostLiveTest do
     on_exit(&Example.TestData.clear/0)
     Example.TestData.clear()
 
-    %{author: Example.Accounts.create_author!(%{name: "Mike Buhot", handle: "mbuhot"})}
+    %{author: Example.Accounts.register_author!("Mike Buhot", "mbuhot")}
   end
 
   test "renders posts read through the domain, with calculations the domain loaded", %{
@@ -27,7 +27,7 @@ defmodule ExampleWeb.PostLiveTest do
     assert html =~ "12 words"
   end
 
-  test "renders the authors read from the accounts domain", %{conn: conn, author: author} do
+  test "renders the contributors read from the accounts domain", %{conn: conn, author: author} do
     {:ok, live, html} = live(conn, "/")
 
     assert html =~ "Mike Buhot (@mbuhot)"
@@ -81,7 +81,8 @@ defmodule ExampleWeb.PostLiveTest do
     assert html =~ "Written from a form"
     assert html =~ "1 published"
 
-    assert ["Written from a form"] == Example.Blog.published_post_titles()
+    assert ["Written from a form"] ==
+             Enum.map(Example.Blog.list_published_posts!(), & &1.title)
   end
 
   test "submitting invalid input renders validation errors as plain strings", %{conn: conn} do
@@ -93,7 +94,7 @@ defmodule ExampleWeb.PostLiveTest do
       |> render_submit()
 
     assert html =~ "is required"
-    assert Example.Blog.published_post_titles() == []
+    assert Example.Blog.list_published_posts!() == []
   end
 
   test "live validation reports errors before submission", %{conn: conn} do

@@ -5,7 +5,7 @@ defmodule Example.BlogTest do
     on_exit(&Example.TestData.clear/0)
     Example.TestData.clear()
 
-    %{author: Example.Accounts.create_author!(%{name: "Mike Buhot", handle: "mbuhot"})}
+    %{author: Example.Accounts.register_author!("Mike Buhot", "mbuhot")}
   end
 
   test "the exported read action returns structs with calculations already loaded", %{
@@ -25,14 +25,12 @@ defmodule Example.BlogTest do
     refute match?(%Ash.NotLoaded{}, post.word_count)
   end
 
-  test "the read action loads the author's display name from the accounts domain", %{
-    author: author
-  } do
+  test "the byline calculation reads through the accounts domain's interface", %{author: author} do
     Example.Blog.create_post!(%{title: "Attributed", author_id: author.id, body: "Body"})
 
     [post] = Example.Blog.list_published_posts!()
 
-    assert post.author.display_name == "Mike Buhot (@mbuhot)"
+    assert post.byline == "Mike Buhot (@mbuhot)"
   end
 
   test "unpublished posts are filtered out by the read action, not by the caller", %{
@@ -51,31 +49,22 @@ defmodule Example.BlogTest do
     assert 2 == length(Example.Blog.list_posts!())
   end
 
-  test "fetch_post/1 returns a post", %{author: author} do
+  test "get_post_by_id/1 returns a post", %{author: author} do
     created = Example.Blog.create_post!(%{title: "Findable", author_id: author.id, body: "Here"})
 
-    assert {:ok, post} = Example.Blog.fetch_post(created.id)
+    assert {:ok, post} = Example.Blog.get_post_by_id(created.id)
     assert post.title == "Findable"
     assert post.excerpt == "Here"
   end
 
-  test "fetch_post/1 translates a missing post into :not_found, not an Ash error" do
-    assert {:error, :not_found} = Example.Blog.fetch_post(Ash.UUID.generate())
+  test "get_post_by_id/1 returns the Ash error the LiveView matches on" do
+    assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+             Example.Blog.get_post_by_id(Ash.UUID.generate())
   end
 
-  test "fetch_post/1 translates an unusable id into a plain string message" do
-    assert {:error, message} = Example.Blog.fetch_post("not-a-uuid")
-    assert is_binary(message)
-  end
-
-  test "the generated code interface, by contrast, returns an Ash error struct" do
-    assert {:error, %Ash.Error.Invalid{}} = Example.Blog.get_post_by_id(Ash.UUID.generate())
-  end
-
-  test "published_post_titles/0 returns plain strings", %{author: author} do
-    Example.Blog.create_post!(%{title: "Plain data", author_id: author.id, body: "Strings only"})
-
-    assert ["Plain data"] == Example.Blog.published_post_titles()
+  test "get_post_by_id/1 returns an invalid argument error for an unusable id" do
+    assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidArgument{}]}} =
+             Example.Blog.get_post_by_id("not-a-uuid")
   end
 
   test "the domain builds a form for a declared action" do

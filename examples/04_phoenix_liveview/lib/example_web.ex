@@ -19,7 +19,13 @@ defmodule ExampleWeb do
 
   use Boundary,
     check: [aliases: true, apps: [:ash, :spark]],
-    deps: [Example.Accounts, Example.Blog, AshPhoenix.Form],
+    deps: [
+      Example.Accounts,
+      Example.Blog,
+      AshPhoenix.Form,
+      Ash.Error.Invalid,
+      Ash.Error.Query.NotFound
+    ],
     exports: [Endpoint, Telemetry]
 
   def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)

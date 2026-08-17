@@ -1,6 +1,4 @@
 defmodule Example.AccountsTest do
-  @moduledoc false
-
   use ExUnit.Case, async: false
 
   setup do
@@ -9,31 +7,39 @@ defmodule Example.AccountsTest do
     :ok
   end
 
-  test "list_authors/0 sorts by name and loads the display name" do
-    Example.Accounts.create_author!(%{name: "Zoe", handle: "zoe"})
-    Example.Accounts.create_author!(%{name: "Ada", handle: "ada"})
+  test "contributors/0 returns plain maps, sorted by name" do
+    Example.Accounts.register_author!("Zoe", "zoe")
+    Example.Accounts.register_author!("Ada", "ada")
 
     assert ["Ada (@ada)", "Zoe (@zoe)"] ==
-             Enum.map(Example.Accounts.list_authors!(), & &1.display_name)
+             Enum.map(Example.Accounts.contributors!(), & &1.display_name)
   end
 
-  test "invitations are reachable only through the domain's own functions" do
-    before = Example.Accounts.pending_invitation_count()
+  test "author_bylines/1 returns display names for the ids it is given" do
+    author = Example.Accounts.register_author!("Ada", "ada")
 
-    assert :ok == Example.Accounts.invite_author("someone@example.com")
-
-    assert Example.Accounts.pending_invitation_count() == before + 1
+    assert %{} = bylines = Example.Accounts.author_bylines!([author.id])
+    assert bylines[author.id] == "Ada (@ada)"
   end
 
-  test "invite_author/1 returns a plain string message for invalid input" do
-    assert {:error, message} = Example.Accounts.invite_author(nil)
-    assert is_binary(message)
+  test "inviting an author counts against the internal invitation resource" do
+    author = Example.Accounts.register_author!("Ada", "ada")
+
+    assert author.pending_invitations == 0
+
+    assert %{pending_invitations: 1} =
+             Example.Accounts.invite_author!(author.id, "someone@example.com")
   end
 
-  test "the boundary exports Author and keeps Invitation internal" do
+  test "the code interface returns an Ash error for an unknown author" do
+    assert {:error, %Ash.Error.Invalid{}} =
+             Example.Accounts.invite_author(Ash.UUID.generate(), "someone@example.com")
+  end
+
+  test "the boundary exports Directory and keeps Author and Invitation internal" do
     %{opts: opts} = AshBoundary.Declaration.definition(Example.Accounts)
 
-    assert opts[:exports] == [Author]
+    assert opts[:exports] == [Directory]
     assert opts[:deps] == []
   end
 end

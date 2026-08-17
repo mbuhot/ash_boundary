@@ -40,13 +40,6 @@ defmodule Example.Accounts.Author do
       prepare build(load: [:display_name, :pending_invitations], sort: [name: :asc])
     end
 
-    read :by_id do
-      argument :id, :uuid, allow_nil?: false
-      get? true
-      filter expr(id == ^arg(:id))
-      prepare build(load: [:display_name, :pending_invitations])
-    end
-
     update :invite do
       require_atomic? false
       argument :email, :string, allow_nil?: false

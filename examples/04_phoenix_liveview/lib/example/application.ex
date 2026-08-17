@@ -27,7 +27,7 @@ defmodule Example.Application do
 
   defp maybe_seed_posts do
     if Application.get_env(:example, :seed_posts?, false) do
-      author = Example.Accounts.create_author!(%{name: "Mike Buhot", handle: "mbuhot"})
+      author = Example.Accounts.register_author!("Mike Buhot", "mbuhot")
 
       Example.Blog.create_post!(%{
         title: "Boundaries for Ash domains",

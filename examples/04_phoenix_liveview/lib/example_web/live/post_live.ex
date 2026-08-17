@@ -13,7 +13,7 @@ defmodule ExampleWeb.PostLive do
      socket
      |> assign(selected: nil, lookup_error: nil)
      |> assign_posts()
-     |> assign_authors()
+     |> assign_contributors()
      |> assign_new_form()}
   end
 
@@ -39,18 +39,15 @@ defmodule ExampleWeb.PostLive do
 
   @impl Phoenix.LiveView
   def handle_event("show", %{"id" => id}, socket) do
-    case Example.Blog.fetch_post(id) do
+    case Example.Blog.get_post_by_id(id) do
       {:ok, %Example.Blog.Post{} = post} ->
         {:noreply, assign(socket, selected: post, lookup_error: nil)}
 
-      # This boundary cannot match %Ash.Error.Invalid{}, which is why fetch_post/1 returns plain data.
-      # {:error, %Ash.Error.Invalid{}} -> {:noreply, assign(socket, lookup_error: "Invalid")}
-
-      {:error, :not_found} ->
+      {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{} | _]}} ->
         {:noreply, assign(socket, selected: nil, lookup_error: "No such post")}
 
-      {:error, message} ->
-        {:noreply, assign(socket, selected: nil, lookup_error: message)}
+      {:error, error} ->
+        {:noreply, assign(socket, selected: nil, lookup_error: Exception.message(error))}
     end
   end
 
@@ -65,7 +62,7 @@ defmodule ExampleWeb.PostLive do
       <ul id="posts">
         <li :for={post <- @posts} id={"post-#{post.id}"}>
           <h2>{post.title}</h2>
-          <p class="author">by {post.author.display_name}</p>
+          <p class="author">by {post.byline}</p>
           <p class="excerpt">{post.excerpt}</p>
           <p class="word-count">{post.word_count} words</p>
           <button phx-click="show" phx-value-id={post.id}>Show</button>
@@ -81,7 +78,9 @@ defmodule ExampleWeb.PostLive do
       <aside id="contributors">
         <h2>Contributors</h2>
         <ul>
-          <li :for={author <- @authors} id={"author-#{author.id}"}>{author.display_name}</li>
+          <li :for={contributor <- @contributors} id={"author-#{contributor.id}"}>
+            {contributor.display_name} ({contributor.pending_invitations} invitations pending)
+          </li>
         </ul>
       </aside>
 
@@ -91,7 +90,7 @@ defmodule ExampleWeb.PostLive do
           field={@form[:author_id]}
           type="select"
           prompt="Choose an author"
-          options={author_options(@authors)}
+          options={author_options(@contributors)}
           label="Author"
         />
         <.input field={@form[:body]} type="textarea" label="Body" />
@@ -107,11 +106,11 @@ defmodule ExampleWeb.PostLive do
     assign(socket, posts: Example.Blog.list_published_posts!())
   end
 
-  defp assign_authors(socket) do
-    assign(socket, authors: Example.Accounts.list_authors!())
+  defp assign_contributors(socket) do
+    assign(socket, contributors: Example.Accounts.contributors!())
   end
 
-  defp author_options(authors), do: Enum.map(authors, &{&1.display_name, &1.id})
+  defp author_options(contributors), do: Enum.map(contributors, &{&1.display_name, &1.id})
 
   defp assign_new_form(socket) do
     assign(socket, form: to_form(Example.Blog.form_to_create_post(as: "post")))
