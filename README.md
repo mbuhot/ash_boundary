@@ -10,11 +10,21 @@ The `boundary` compiler enforces the declaration on each build.
 - Each resource with a domain-level `define` is public.
 - All other modules in the domain's namespace are internal.
 
+A domain-level `define` publishes the whole resource module, not only the actions
+it names: `boundary` exports modules, not functions. Outside code can call any
+public function on an exported resource, including the functions from its own
+`code_interface` block. A resource with no domain-level `define` stays internal,
+and so do its `code_interface` functions.
+
 ## Why
 
-An Ash domain has no enforced public interface.
-Any module in the application can reach any resource, action, or internal module it owns.
-Every such reference becomes a constraint on future changes to that domain.
+An Ash domain has no enforced public interface. Any module in the application
+can call any action, match any resource struct, and read any attribute.
+
+Each of those references is code you have to find before you can change the
+domain. Rename an attribute, and a struct match in an unrelated LiveView breaks.
+Add a required argument to an action, and every caller breaks. Nothing tells you
+which callers exist, or where they are, until something fails.
 
 AshBoundary makes the interface explicit and enforces it at compile time.
 A domain declares which other domains it depends on.

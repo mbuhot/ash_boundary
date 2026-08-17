@@ -60,6 +60,12 @@ defmodule AshBoundary do
   (`code_interface do ... end` inside `use Ash.Resource`) stays internal.
   Declaring the code interface on the domain makes a resource public.
 
+  A `define` publishes the whole resource module, not only the actions it names:
+  `boundary` exports modules, not functions. Outside code can call any public
+  function on an exported resource, including the functions from its own
+  `code_interface` block. There is no way to export one action and withhold
+  another on the same module.
+
   Exports do not propagate through relationships. If an exported resource has a
   relationship to a non-exported resource, loading that relationship from
   outside the domain is a violation. Give the relationship a code interface or a
