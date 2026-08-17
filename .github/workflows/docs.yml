@@ -1,0 +1,83 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+
+  # Lets this workflow be re-run manually from the Actions tab, e.g. after the
+  # GitHub Pages "Source" setting has been switched to "GitHub Actions" without a new
+  # push to main.
+  workflow_dispatch:
+
+# Only one docs deployment should ever be in flight at a time; a second push queues
+# behind it rather than cancelling it, so an in-progress production deployment is never
+# left half-applied — this is GitHub's own documented Pages pattern, not the general
+# "cancel the old one" default used elsewhere.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+# Set at the workflow level, not per-job: `configure-pages` (in `build`) needs `pages:
+# read` to call `GET /repos/{owner}/{repo}/pages`, and `deploy-pages` (in `deploy`) needs
+# `pages: write` and `id-token: write` to publish. Matches GitHub's own two-job Pages
+# starter workflow.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  MIX_ENV: dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        id: beam
+        uses: erlef/setup-beam@v1
+        with:
+          # Matches the version pinned in ci.yml, so docs are always built with the same
+          # toolchain the rest of CI already validates against.
+          elixir-version: "1.18.3"
+          otp-version: "27.2"
+
+      - name: Restore deps and _build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-docs-${{ runner.os }}-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            mix-docs-${{ runner.os }}-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Build docs
+        run: mix docs
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload docs artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: doc
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
