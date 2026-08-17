@@ -31,3 +31,7 @@ examples/*/_build/
 examples/*/deps/
 examples/*/doc/
 examples/*/cover/
+
+# Local planning and build-process notes, kept out of the published repo.
+/GOAL.md
+/PROCESS.md

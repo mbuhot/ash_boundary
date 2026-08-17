@@ -12,14 +12,18 @@ The `boundary` compiler enforces the declaration on each build.
 
 ## Why
 
-All application code can reference a domain's internal resources.
-A resource in one domain can hold a direct relationship to a resource in a different domain.
-This coupling makes future refactors difficult.
+An Ash domain has no enforced public interface.
+Any module in the application can reach any resource, action, or internal module it owns.
+Every such reference becomes a constraint on future changes to that domain.
 
-AshBoundary reports this coupling at compile time.
-To remove the coupling, replace the direct relationship with a calculation.
-The calculation calls a function on the public interface of the other domain.
+AshBoundary makes the interface explicit and enforces it at compile time.
+A domain declares which other domains it depends on.
+The compiler reports each reference that crosses a boundary without a declaration.
+Add `--warnings-as-errors` to turn those reports into a failed build.
 
+The most common violation is a resource in one domain that holds a relationship
+to a resource in another. The fix is to depend on the other domain's public
+interface instead of its internals.
 See [the decoupling guide](guides/decoupling-with-calculations.md) and
 [`examples/03_decoupling_via_calculation`](examples/03_decoupling_via_calculation).
 

@@ -257,8 +257,8 @@ names in `ExampleWeb`, so a module that writes
 compiling it. What the `form_to_*` route changes is that the correct path is now
 the shortest path, and that no generated function exists for an undeclared
 action. Closing the gap in the compiler would need function-level exports, which
-`boundary` does not have. That is the same module-level granularity limit that
-GOAL.md design rule 4 already accepts.
+`boundary` does not have. That is the same module-level granularity limit
+AshBoundary accepts by design: `exports` name modules, not functions.
 
 ## Why `Ash.load/2` gets no exception
 
@@ -289,7 +289,7 @@ A narrow exception is also impossible. See the next section.
 
 ## Two accepted limitations of the same kind
 
-GOAL.md design rule 4 accepts one granularity limitation. `boundary`'s
+AshBoundary accepts one granularity limitation by design. `boundary`'s
 `exports` work at module level. Exporting a resource for struct access also
 exposes every function on that module. This example meets a second instance of
 the same class of trade-off.
