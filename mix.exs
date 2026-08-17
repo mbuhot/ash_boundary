@@ -107,7 +107,7 @@ defmodule AshBoundary.MixProject do
       # `documentation` ships in the package tarball, not just the git repo, because
       # hexdocs.pm builds docs from exactly what's in the release: an extra missing from
       # here would 404 on hexdocs even though `mix docs` finds it locally.
-      files: ~w(lib documentation .formatter.exs mix.exs README.md LICENSE),
+      files: ~w(lib documentation .formatter.exs mix.exs README.md LICENSE usage-rules.md),
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url}
     ]

@@ -80,6 +80,21 @@ Two examples live in [`examples/`](examples), each its own Mix project:
   domains. Its web layer reaches both through their exported interfaces and cannot call `Ash.*`.
 
 
+## Usage rules
+
+The package ships a `usage-rules.md` for
+[usage_rules](https://hex.pm/packages/usage_rules). List `:ash_boundary` in your
+project's `usage_rules` and run `mix usage_rules.sync`:
+
+```elixir
+def project do
+  [
+    usage_rules: [:ash_boundary],
+    # ...
+  ]
+end
+```
+
 ## Documentation
 
 Docs for latest `main` is published at
