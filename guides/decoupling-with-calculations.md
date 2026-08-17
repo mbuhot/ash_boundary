@@ -1,17 +1,16 @@
 # Decoupling via Calculations
 
-`AshBoundary` exists to make one specific mistake visible: a direct, resource-to-resource
-relationship between two domains. This guide explains why that mistake is easy to make,
-what it costs, and the one-sentence fix — replacing the relationship with a calculation
-that calls the other domain's exported interface. For the full runnable version of
-everything below, see
-[`examples/03_decoupling_via_calculation`](https://github.com/mbuhot/ash_boundary/tree/main/examples/03_decoupling_via_calculation),
-which ships both the "before" and "after" as real, compiling (and, for "before", real,
-*failing to* compile) code.
+AshBoundary makes one specific mistake visible: a direct resource-to-resource
+relationship between two domains. This guide explains the cost of that
+relationship and the fix. The fix replaces the relationship with a calculation
+that calls the other domain's exported interface.
+[`examples/03_decoupling_via_calculation`](https://github.com/mbuhot/ash_boundary/tree/main/examples/03_decoupling_via_calculation)
+ships the "before" and the "after" as runnable code.
 
 ## The mistake looks like ordinary Ash
 
-Two domains, `Orders` and `Customers`. An order is placed by a customer, so naturally:
+Two domains, `Orders` and `Customers`. A customer places an order, so the
+natural declaration is:
 
 ```elixir
 # Orders.Order
@@ -28,38 +27,36 @@ actions do
 end
 ```
 
-Nothing here is wrong Ash — it's exactly what the framework makes easy, and if
-`Customers.Customer` were in the same domain as `Order` it would be the right call. The
-problem is that it isn't. `Order` now names another domain's resource module at compile
-time, and `load: [:customer]` issues a read against that domain's storage from code that
-lives in `Orders`.
+This is correct Ash. If `Customer` lived in the same domain as `Order`, this
+declaration would be the right call. Across a domain line it has two effects:
 
-## What a cross-domain relationship actually costs
+- `Order` names another domain's resource module at compile time.
+- `load: [:customer]` issues a read against the other domain's storage, from
+  code that lives in `Orders`.
 
-- **`Orders` cannot be compiled, or understood, without `Customers`.** The dependency is
-  not a documented API call, it is a module reference baked into the relationship
-  declaration.
-- **`Orders` now queries another domain's storage.** `Customer` can no longer change data
-  layer, move behind a service boundary, or add a required filter to its own reads
-  without risking a query that lives in `Orders` and that `Customers` doesn't own.
-- **`Orders` receives whole `Customer` structs**, and so does everything downstream of an
-  order. Every attribute on `Customer` is now in reach of code that had no business
-  seeing it, and any of it may quietly become load-bearing — renaming a field stops being
-  a local change.
-- **It grows.** The natural next step is `has_many :orders` back on `Customer`. Once both
-  directions exist, the two domains are one domain wearing two names.
+## What a cross-domain relationship costs
 
-None of this shows up in the diff that introduces the relationship, and none of it is
-caught by `boundary` on its own — a relationship *names* a module without calling
-anything on it, which is exactly the kind of reference `boundary` does not check unless
-alias checking is turned on. `AshBoundary` turns it on for every domain it declares (see
-the "Relationships are checked, because aliases are checked" section of the
-`AshBoundary` moduledoc), which is precisely what makes the mistake visible instead of
-silent.
+- Compilation of `Orders` requires `Customers`. The dependency is a module
+  reference inside the relationship declaration.
+- `Orders` queries the storage of `Customers`. A data-layer change, a service
+  boundary, or a required read filter in `Customers` breaks a query that lives
+  in `Orders`.
+- `Orders` receives whole `Customer` structs, and so does everything
+  downstream of an order. Each field read becomes load-bearing, so a field
+  rename stops being a local change.
+- The coupling grows. The natural next step is `has_many :orders` on
+  `Customer`. With both directions in place, the two domains are one domain
+  with two names.
+
+The diff that adds the relationship does not show these costs. A relationship
+names a module and calls no function on it, and `boundary` checks that kind of
+reference only when alias checking is on. AshBoundary turns alias checking on
+for every domain it declares, which makes the mistake visible. See the
+`AshBoundary` moduledoc.
 
 ## The fix: an id, an exported answer, and a calculation
 
-Three changes, and they are the entire pattern.
+Three changes make the entire pattern.
 
 **1. The relationship becomes a plain attribute.**
 
@@ -68,10 +65,10 @@ Three changes, and they are the entire pattern.
 attribute :customer_id, :uuid, allow_nil?: false
 ```
 
-An order records *which* customer placed it — an opaque id, not a module reference and
-not a loadable struct.
+An order records the id of the customer that placed it. The attribute holds no
+module reference and loads no struct.
 
-**2. `Customers` exports a purpose-built interface, not the resource.**
+**2. `Customers` exports a purpose-built interface.**
 
 ```elixir
 # Customers domain
@@ -86,9 +83,9 @@ resources do
 end
 ```
 
-`Directory` is a small resource with no data layer of its own, holding a generic action
-that answers exactly the question `Orders` needs answered: given a list of ids, return
-their display names. Callers get answers, never records.
+`Directory` is a small resource with no data layer. It holds one generic
+action that answers the question `Orders` asks: a list of ids in, display
+names out. Callers receive answers. Callers receive no records.
 
 **3. `Order` gains a calculation that calls that interface.**
 
@@ -113,7 +110,7 @@ defmodule MyApp.Orders.Calculations.CustomerDisplayName do
 end
 ```
 
-Declared like any other calculation, and loaded like any other calculation:
+Declare and load it like any other calculation:
 
 ```elixir
 calculate :customer_display_name, :string, CustomerDisplayName do
@@ -121,59 +118,52 @@ calculate :customer_display_name, :string, CustomerDisplayName do
 end
 ```
 
-What crosses the boundary is one function call: a list of ids in, a map of strings out.
-`Customers.Customer` — its attributes, its data layer, its actions — never crosses at
-all, and because it isn't exported, the compiler now rejects any attempt to reach it
-directly from `Orders`.
+One function call crosses the boundary: a list of ids in, a map of strings
+out. `Customers.Customer` stays inside its own domain, and the compiler
+rejects a direct reference to it from `Orders`.
 
-## Why the interface takes a list, not one id at a time
+## Why the interface takes a list
 
-Ash calls a calculation's `calculate/3` once with the *entire batch* of records being
-loaded, whether that's one order or a thousand. Shaping `Customers`' exported interface
-around that access pattern — a list of ids in, a map of answers out — means loading
-`:customer_display_name` over any number of orders costs exactly one call into
-`Customers`, never one call per record. "You can't join a function call" is the fair
-objection to this pattern in general; the answer is to design the exported function
-around how it's actually called, not to accept N calls where a relationship would have
-issued one query.
+Ash calls a calculation's `calculate/3` once, with the entire batch of records
+being loaded, for one order or a thousand. The exported interface takes a list
+of ids and returns a map of answers, so a load of `:customer_display_name`
+makes one call into `Customers` for any number of orders. Shape an exported
+function around the access pattern of its caller.
 
-Note where that decision lives: entirely inside `Customers`, behind the interface.
-`Customers` is free to change how `display_names` is computed — caching, batching, a
-different storage engine entirely — without `Orders` changing a line. A relationship
-would have put that decision in `Orders`' own query.
+That decision lives inside `Customers`, behind the interface. `Customers` can
+change its caching, its batching, or its storage engine without a change in
+`Orders`.
 
-## The trade-off, honestly
+## The trade-off
 
-`boundary`'s exports are module-level, not member-level: there is no way to export "just
-the struct" of a resource while keeping its functions private. So the alternative to a
-calculation — giving `Customer` a domain-level `define` so it can be exported and
-related to directly — exports the *entire* `Customer` module to the entire app, and
-`boundary` stops helping with it anywhere. That's a fine trade when a caller genuinely
-needs the record (see `examples/01_basic_boundary` and `examples/02_exported_vs_internal`,
-both of which export a resource this way, deliberately). It's the wrong trade when it's
-done only to let a relationship compile — see
-[`examples/03_decoupling_via_calculation`'s "The escape hatch, and why it is not one"](https://github.com/mbuhot/ash_boundary/tree/main/examples/03_decoupling_via_calculation#the-escape-hatch-and-why-it-is-not-one)
-for that exact scenario, verified rather than asserted.
+`boundary` exports are module-level. An export includes every function on the
+module. The alternative fix gives `Customer` a domain-level `define`, which
+exports the whole `Customer` module to the entire app and removes `boundary`'s
+protection for it everywhere. That trade is right when a caller needs the
+record: `examples/01_basic_boundary` and `examples/02_exported_vs_internal`
+both export a resource this way, deliberately. That trade is wrong when its
+only purpose is to let a relationship compile. See
+[the escape hatch section of `examples/03_decoupling_via_calculation`](https://github.com/mbuhot/ash_boundary/tree/main/examples/03_decoupling_via_calculation#the-escape-hatch-and-why-it-is-not-one)
+for that exact scenario.
 
-The rule of thumb: when another domain needs an **answer**, give it a purpose-built
-interface and keep the resource internal. When another domain genuinely needs the
-**record**, export the resource with a domain-level `define` and accept that its module
-is now public. A cross-domain relationship is almost always the case where it looks like
-you need the record but you actually needed an answer.
+The rule: when another domain needs an answer, export a purpose-built
+interface and keep the resource internal. When another domain needs the
+record, export the resource with a domain-level `define` and accept that the
+module is public. In most cross-domain relationships, the caller needs an
+answer.
 
 ## See it run
 
 [`examples/03_decoupling_via_calculation`](https://github.com/mbuhot/ash_boundary/tree/main/examples/03_decoupling_via_calculation)
 ships both states as real code:
 
-- `antipattern/` — the relationship above, kept out of the example's normal build and
-  compiled only via `MIX_ENV=antipattern mix compile`, whose entire purpose is to show
-  `boundary` refusing it.
-- `lib/` — the calculation-based fix, with a test that loads `:customer_display_name`
-  from outside both domains and asserts on a real name computed from the other domain's
-  own storage.
+- `antipattern/` holds the relationship above. The normal build excludes it.
+  `MIX_ENV=antipattern mix compile` compiles it and shows `boundary` refusing
+  it.
+- `lib/` holds the calculation-based fix, with a test that loads
+  `:customer_display_name` from outside both domains and asserts on a real
+  name computed from the other domain's storage.
 
 [`examples/04_deliberate_violation`](https://github.com/mbuhot/ash_boundary/tree/main/examples/04_deliberate_violation)
-takes the same pattern one step further: it automates the "the compiler catches this" claim
-as a real, `mix test`-run assertion on a real `mix compile --warnings-as-errors` exit code,
-rather than a README walkthrough you have to reproduce by hand.
+automates the "the compiler catches this" claim: a test asserts on the exit
+code of a real `mix compile --warnings-as-errors` run.

@@ -104,7 +104,7 @@ defmodule AshBoundary do
   time to avoid leaving a resource unguarded. Move resources into the domain's
   namespace before adopting AshBoundary.
 
-  ## `deps` is declared, not inferred
+  ## Declare `deps` by hand
 
   `deps` lists the other boundaries this domain may reference. AshBoundary never
   infers this list from existing code. Reviewing every cross-domain dependency
