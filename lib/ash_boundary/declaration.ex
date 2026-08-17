@@ -85,23 +85,23 @@ defmodule AshBoundary.Declaration do
   @doc """
   Declares `module` as a boundary, as if it had called `use Boundary`.
 
-  Must be called while `module` is still being compiled, which is the case for
-  a Spark transformer.
+  Call this while `module` is still being compiled. A Spark transformer runs at
+  that point.
 
   Supported options:
 
     * `:exports` - fully qualified modules to export. Converted to the relative
       form `boundary` expects.
-    * `:file` / `:line` - source position used in `boundary`'s error messages.
-    * every other option is passed through to `boundary` untouched, so `:deps`,
+    * `:file` / `:line` - the source position used in `boundary`'s error messages.
+    * Every other option passes through to `boundary` untouched, so `:deps`,
       `:type`, `:check`, `:top_level?` and `:dirty_xrefs` all work as documented
       by `Boundary`.
 
-  Nothing is defaulted here — `:check` included. What AshBoundary passes for a domain,
-  and why it cannot simply be `[aliases: true]`, is `check_opts/0`.
+  This function applies no defaults, `:check` included. `check_opts/0` explains
+  what AshBoundary passes for a domain.
 
-  Raises `ArgumentError` if an export does not live under the boundary's namespace,
-  since `boundary` has no way to express that.
+  Raises `ArgumentError` if an export lives outside the boundary's namespace.
+  `boundary` has no way to express that export.
   """
   @spec declare(module(), keyword()) :: :ok
   def declare(module, opts) when is_atom(module) and is_list(opts) do
@@ -142,29 +142,30 @@ defmodule AshBoundary.Declaration do
   end
 
   @doc """
-  The `:check` options AshBoundary declares for a domain, defaulting alias checking on.
+  The `:check` options AshBoundary declares for a domain, with alias checking on
+  by default.
 
-  `boundary`'s own default is `check: [aliases: false]`: a module *named* without anything
-  being called on it is not checked. That default is wrong for Ash. A relationship
+  `boundary`'s own default is `check: [aliases: false]`: a bare module reference
+  is unchecked. That default is wrong for Ash. A relationship
 
       belongs_to :customer, Other.Customer
 
-  names the other domain's resource module and calls nothing on it, so under `boundary`'s
-  default a cross-domain relationship into a non-exported resource is invisible — it
-  compiles with no warning at all. Since making exactly that reference visible is the
-  point of AshBoundary, alias checking is on by default here.
+  names the other domain's resource module and calls no function on it. Under
+  `boundary`'s default, a cross-domain relationship into a non-exported resource
+  compiles with no warning. AshBoundary exists to make that reference visible,
+  so alias checking is on by default here.
 
   ## Why this reads the project config
 
-  `Boundary.Definition` merges the project-level `boundary: [default: [check: ...]]` from
-  `mix.exs` with a boundary's own options using a *shallow* `Map.merge`, so a per-boundary
-  `check:` replaces the project-level one outright instead of extending it. Passing a bare
-  `check: [aliases: true]` would therefore silently discard a consuming app's own
-  `check: [apps: [...]]` for every AshBoundary domain — and only for those.
+  `Boundary.Definition` merges the project-level `boundary: [default: [check: ...]]`
+  from `mix.exs` with a boundary's own options in a shallow `Map.merge`, so a
+  per-boundary `check:` replaces the whole project-level list. A bare
+  `check: [aliases: true]` would silently discard a consuming app's own
+  `check: [apps: [...]]` for every AshBoundary domain.
 
-  So the project-level list is read here and merged, rather than overridden. An explicit
-  `aliases:` in it always wins: an app that has deliberately configured
-  `check: [aliases: false]` has made a decision, and AshBoundary does not overrule it.
+  So this function reads the project-level list and merges into it. An explicit
+  `aliases:` entry in it always wins: an app that configures
+  `check: [aliases: false]` has made a decision, and AshBoundary honours it.
   """
   @spec check_opts() :: keyword()
   def check_opts, do: check_opts(project_check())
@@ -189,8 +190,8 @@ defmodule AshBoundary.Declaration do
   Converts fully qualified export modules into the boundary-relative form.
 
   The boundary module itself is dropped, since `boundary` always exports it.
-  Returns `{:error, modules}` listing any modules that are not nested under
-  `boundary`, which `boundary` cannot express as exports.
+  Returns `{:error, modules}` listing the modules outside `boundary`'s
+  namespace, which `boundary` cannot express as exports.
   """
   @spec relative_exports(module(), [module()]) :: {:ok, [module()]} | {:error, [module()]}
   def relative_exports(boundary, exports) when is_atom(boundary) and is_list(exports) do

@@ -9,7 +9,7 @@ defmodule AshBoundary.Info do
 
   alias Spark.Dsl.Extension
 
-  @typedoc "A `deps` entry, in either of the two forms the DSL accepts."
+  @typedoc "A `deps` entry, in one of the two forms the DSL accepts."
   @type dep :: module() | {module(), :compile | :runtime}
 
   @typedoc "A domain module, or the DSL state of one still being compiled."
@@ -18,7 +18,7 @@ defmodule AshBoundary.Info do
   @doc """
   The `deps` declared in the `boundary` section, exactly as written.
 
-  Defaults to `[]`, which is also what a domain with no `boundary` section gets.
+  Returns `[]` for a domain with no `boundary` section.
   """
   @spec deps(domain()) :: [dep()]
   def deps(domain), do: Extension.get_opt(domain, [:boundary], :deps, [])
@@ -45,18 +45,18 @@ defmodule AshBoundary.Info do
   def dep_module(module) when is_atom(module), do: module
 
   @doc """
-  Every resource the domain references, exported or not.
+  Every resource the domain references, exported and internal.
   """
   @spec resources(domain()) :: [module()]
   def resources(domain), do: Enum.map(resource_references(domain), & &1.resource)
 
   @doc """
-  The modules this domain exports: the domain itself, plus every resource carrying at
+  The modules this domain exports: the domain module, plus each resource with at
   least one domain-level `define`.
 
-  The domain module leads the list because it is the domain's own public API. `boundary`
-  exports a boundary's root module implicitly, so `AshBoundary.Declaration` drops it
-  again when installing the declaration — see `AshBoundary.Declaration.relative_exports/2`.
+  The domain module leads the list. `boundary` exports a boundary's root module
+  implicitly, so `AshBoundary.Declaration` drops it when it installs the
+  declaration. See `AshBoundary.Declaration.relative_exports/2`.
   """
   @spec exports(domain()) :: [module()]
   def exports(domain) do
@@ -70,7 +70,7 @@ defmodule AshBoundary.Info do
   end
 
   @doc """
-  The domain module, whether given the module itself or its DSL state.
+  The domain module, from the module itself or from its DSL state.
   """
   @spec module(domain()) :: module()
   def module(domain) when is_atom(domain), do: domain
