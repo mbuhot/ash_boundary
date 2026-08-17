@@ -12,8 +12,8 @@ defmodule ExportedVsInternal.Storefront.Calculations.SalePrice do
   def calculate(listings, _opts, _context) do
     product_ids = Enum.map(listings, & &1.product_id)
 
-    # A violation: InternalPricing has a code interface, and Catalog does not export it.
-    # Catalog.InternalPricing.for_products!(product_ids)
+    # Calling Catalog.InternalPricing is not allowed
+    # prices = Map.new(product_ids, &{&1, Catalog.InternalPricing.calculate!(&1).sale_price})
     prices = Catalog.product_sale_prices!(product_ids)
 
     {:ok, Enum.map(listings, &Map.get(prices, &1.product_id))}

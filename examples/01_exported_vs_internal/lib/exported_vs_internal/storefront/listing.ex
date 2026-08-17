@@ -15,9 +15,7 @@ defmodule ExportedVsInternal.Storefront.Listing do
     uuid_primary_key :id
     attribute :headline, :string, allow_nil?: false, public?: true
 
-    # belongs_to :pricing, ExportedVsInternal.Catalog.InternalPricing is a violation: it names
-    # Catalog's resource module directly. The calculation below reaches Catalog's exported
-    # interface instead.
+    # belongs_to :pricing, ExportedVsInternal.Catalog.InternalPricing is not allowed
     attribute :product_id, :uuid, allow_nil?: false, public?: true
   end
 

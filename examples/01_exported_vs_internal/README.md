@@ -75,14 +75,13 @@ never receives a pricing record. `Catalog` can change how a sale price is comput
 Two are carried as comments beside the code that replaced them:
 
 - `lib/exported_vs_internal/storefront/listing.ex` names the `belongs_to` that
-  `attribute :product_id, :uuid` replaces. Written as a relationship in that resource, `boundary`
-  reports a forbidden reference to `ExportedVsInternal.Catalog.InternalPricing`. AshBoundary sets
-  `check: [aliases: true]`, which is what makes a cross-domain relationship a caught reference
-  rather than a silent one.
-- `lib/exported_vs_internal/storefront/calculations/sale_price.ex` carries a forbidden call,
-  directly above the allowed one. Uncomment it and `boundary` reports the same forbidden
-  reference. The warning names the module and no function. The resource's working code interface
-  does not change the outcome.
+  `attribute :product_id, :uuid` replaces. Written as a relationship, it is a forbidden reference
+  to `ExportedVsInternal.Catalog.InternalPricing`. AshBoundary sets `check: [aliases: true]`,
+  which is what makes a cross-domain relationship a caught reference rather than a silent one.
+- `lib/exported_vs_internal/storefront/calculations/sale_price.ex` carries a per-record call into
+  `InternalPricing`, directly above the allowed batched one. Uncomment it and `boundary` reports
+  the same forbidden reference. The warning names the module and no function. The resource's
+  working code interface does not change the outcome.
 
 ## Tests
 
