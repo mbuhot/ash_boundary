@@ -43,19 +43,11 @@ Add the `:boundary` compiler to your project configuration:
 
   * The domain module is public.
   * Each resource that exposes a code interface in the domain is public.
+  * Each module named in `exports` is public.
   * All other modules in the domain's namespace are internal.
   * Referencing another domain requires an explicit `boundary` dep.
 
-`boundary` exports modules, not functions, so a `define` publishes every
-public function on that resource module.
-
-Exports do not propagate. A relationship to a non-exported resource is a
-violation, and AshBoundary sets `check: [aliases: true]` so `boundary` reports
-it.
-
-Resources must be namespaced under their domain. AshBoundary raises otherwise,
-since `boundary` can neither export nor protect a module outside the
-namespace.
+AshBoundary sets `check: [aliases: true]` so `boundary` reports any cross-domain relationships as violations.
 
 
 ## boundary
@@ -63,7 +55,8 @@ Configures the `boundary` declared for this domain.
 
 This section is optional. A domain with no `boundary` section declares a
 boundary with zero deps, which is the strictest default. Add the section to
-declare dependencies on other domains.
+declare dependencies on other domains, or to export a public module that is
+not a resource.
 
 
 
@@ -72,6 +65,7 @@ declare dependencies on other domains.
 ```
 boundary do
   deps [MyApp.Accounts, {MyApp.Codegen, :compile}]
+  exports [MyApp.Blog.PostStatus]
 end
 
 ```
@@ -84,6 +78,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`deps`](#boundary-deps){: #boundary-deps } | `list(module \| {module, :compile \| :runtime})` | `[]` | The other boundaries this domain can reference. Each entry must be a module that declares a boundary of its own: an `Ash.Domain` extended with `AshBoundary`, or a module that calls `use Boundary`. A bare module is equivalent to `{module, :runtime}` and permits each kind of reference. `{module, :compile}` permits compile-time references only, so a runtime call to that boundary becomes a violation. |
+| [`exports`](#boundary-exports){: #boundary-exports } | `list(module)` | `[]` | Public modules of this domain that are not resources. An `Ash.Type.Enum` named in an exported resource's attribute types is the usual case: outside code has to name it, so it belongs in the domain's API. Each module must be nested under the domain's namespace. A resource of this domain is rejected here. Resource exports come from `resources`, where a domain-level `define` makes a resource public. |
 
 
 

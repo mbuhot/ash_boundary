@@ -40,6 +40,7 @@ defmodule AshBoundary do
 
     * The domain module is public.
     * Each resource that exposes a code interface in the domain is public.
+    * Each module named in `exports` is public.
     * All other modules in the domain's namespace are internal.
     * Referencing another domain requires an explicit `boundary` dep.
 
@@ -55,12 +56,14 @@ defmodule AshBoundary do
 
     This section is optional. A domain with no `boundary` section declares a
     boundary with zero deps, which is the strictest default. Add the section to
-    declare dependencies on other domains.
+    declare dependencies on other domains, or to export a public module that is
+    not a resource.
     """,
     examples: [
       """
       boundary do
         deps [MyApp.Accounts, {MyApp.Codegen, :compile}]
+        exports [MyApp.Blog.PostStatus]
       end
       """
     ],
@@ -77,6 +80,20 @@ defmodule AshBoundary do
         permits each kind of reference. `{module, :compile}` permits
         compile-time references only, so a runtime call to that boundary
         becomes a violation.
+        """
+      ],
+      exports: [
+        type: {:list, :module},
+        default: [],
+        doc: """
+        Public modules of this domain that are not resources.
+
+        An `Ash.Type.Enum` named in an exported resource's attribute types is
+        the usual case: outside code has to name it, so it belongs in the
+        domain's API. Each module must be nested under the domain's namespace.
+
+        A resource of this domain is rejected here. Resource exports come from
+        `resources`, where a domain-level `define` makes a resource public.
         """
       ]
     ]

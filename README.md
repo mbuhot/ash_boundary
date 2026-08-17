@@ -10,6 +10,7 @@ The `boundary` compiler enforces the declaration on each build.
 
 - The domain module is public.
 - Each resource that exposes a code interface in the domain is public.
+- Each module named in the `boundary` block's `exports` is public.
 - All other modules in the domain's namespace are internal.
 - Referencing another domain requires an explicit `boundary` dep.
 

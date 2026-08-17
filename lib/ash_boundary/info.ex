@@ -44,14 +44,22 @@ defmodule AshBoundary.Info do
   def dep_module(module) when is_atom(module), do: module
 
   @doc """
+  The `exports` declared in the `boundary` section, exactly as written.
+
+  Returns `[]` for a domain with no `boundary` section.
+  """
+  @spec declared_exports(domain()) :: [module()]
+  def declared_exports(domain), do: Extension.get_opt(domain, [:boundary], :exports, [])
+
+  @doc """
   Every resource the domain references, exported and internal.
   """
   @spec resources(domain()) :: [module()]
   def resources(domain), do: Enum.map(resource_references(domain), & &1.resource)
 
   @doc """
-  The modules this domain exports: the domain module, plus each resource with at
-  least one domain-level `define`.
+  The modules this domain exports: the domain module, each resource with at
+  least one domain-level `define`, and the modules named by `declared_exports/1`.
 
   The domain module leads the list. `boundary` exports a boundary's root module
   implicitly, so `AshBoundary.Declaration` drops it when it installs the
@@ -59,13 +67,13 @@ defmodule AshBoundary.Info do
   """
   @spec exports(domain()) :: [module()]
   def exports(domain) do
-    exported =
+    defined =
       domain
       |> resource_references()
       |> Enum.filter(&(&1.definitions != []))
       |> Enum.map(& &1.resource)
 
-    [module(domain) | exported]
+    Enum.uniq([module(domain) | defined] ++ declared_exports(domain))
   end
 
   @doc """

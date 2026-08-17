@@ -43,6 +43,7 @@ end
 
 - The domain module.
 - Every resource with at least one domain-level `define` in the `resources` block.
+- Every module named in `exports` in the `boundary` block.
 
 A resource whose only code interface is on the resource module itself
 (`code_interface do ... end` inside `use Ash.Resource`) is internal. Declaring
@@ -51,6 +52,18 @@ the interface on the domain is what makes a resource public.
 Exports are module-level, not function-level. A `define` publishes every public
 function on that resource module. There is no way to export one action and
 withhold another on the same module.
+
+`exports` covers public modules that are not resources, such as an
+`Ash.Type.Enum` named in an exported resource's attribute types:
+
+```elixir
+boundary do
+  exports [MyApp.Blog.PostStatus]
+end
+```
+
+Naming a resource of the domain there is rejected at compile time. Give it a
+domain-level `define` instead.
 
 ## deps
 
@@ -72,9 +85,9 @@ A dep grants access to the other domain's exports only.
 ## Replace a cross-domain relationship with a calculation
 
 A relationship names another domain's resource module, and AshBoundary sets
-`check: [aliases: true]`, so `boundary` reports it. Do not add the target
-resource to `exports` to silence it. Store the id and read the other domain
-through its exported interface:
+`check: [aliases: true]`, so `boundary` reports it. Do not make the target
+resource public to silence it. Store the id and read the other domain through
+its exported interface:
 
 ```elixir
 # In MyApp.Orders.Order
@@ -89,9 +102,10 @@ call rather than one call per record.
 
 ## Constraints
 
-Resources must be namespaced under their domain. AshBoundary raises at compile
-time otherwise, because `boundary` assigns modules to boundaries by name nesting
-and can neither export nor protect a module outside the namespace.
+Resources and exported modules must be namespaced under their domain.
+AshBoundary raises at compile time otherwise, because `boundary` assigns modules
+to boundaries by name nesting and can neither export nor protect a module outside
+the namespace.
 
 Do not also write `use Boundary` on a domain extended with AshBoundary. Both
 install a declaration and source order decides the winner, so AshBoundary rejects

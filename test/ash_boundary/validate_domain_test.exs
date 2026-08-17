@@ -155,6 +155,135 @@ defmodule AshBoundary.ValidateDomainTest do
     end
   end
 
+  describe "an `exports` entry outside the domain's namespace" do
+    setup do
+      error =
+        Compile.error("""
+        defmodule AshBoundary.Test.Invalid.UnnestedExport do
+          use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
+
+          boundary do
+            exports [AshBoundary.Test.Elsewhere.Status]
+          end
+
+          resources do
+          end
+        end
+        """)
+
+      %{error: error, message: Exception.message(error)}
+    end
+
+    test "is rejected", %{error: error} do
+      assert %DslError{path: [:boundary, :exports]} = error
+    end
+
+    test "names the module, the domain, and a fix", %{message: message} do
+      assert message =~ "The module AshBoundary.Test.Elsewhere.Status is not nested under"
+      assert message =~ "AshBoundary.Test.Invalid.UnnestedExport"
+      assert message =~ "module-name nesting"
+      assert message =~ "Rename it to sit under"
+    end
+
+    test "does not leak `boundary`'s own wording", %{message: message} do
+      refute message =~ "cannot export"
+    end
+
+    test "a module nested under the domain is fine" do
+      refute Compile.error("""
+             defmodule AshBoundary.Test.NestedExport.Status do
+               use Ash.Type.Enum, values: [:on, :off]
+             end
+
+             defmodule AshBoundary.Test.NestedExport do
+               use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
+
+               boundary do
+                 exports [AshBoundary.Test.NestedExport.Status]
+               end
+
+               resources do
+               end
+             end
+             """)
+    end
+  end
+
+  describe "an `exports` entry that names a resource of the domain" do
+    setup do
+      error =
+        Compile.error("""
+        defmodule AshBoundary.Test.Invalid.ExportedResource.Post do
+          use Ash.Resource, domain: AshBoundary.Test.Invalid.ExportedResource
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          actions do
+            defaults [:read]
+          end
+        end
+
+        defmodule AshBoundary.Test.Invalid.ExportedResource do
+          use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
+
+          boundary do
+            exports [AshBoundary.Test.Invalid.ExportedResource.Post]
+          end
+
+          resources do
+            resource AshBoundary.Test.Invalid.ExportedResource.Post
+          end
+        end
+        """)
+
+      %{error: error, message: Exception.message(error)}
+    end
+
+    test "is rejected", %{error: error} do
+      assert %DslError{path: [:boundary, :exports]} = error
+    end
+
+    test "points at `define` instead", %{message: message} do
+      assert message =~ "AshBoundary.Test.Invalid.ExportedResource.Post is listed in `exports`"
+      assert message =~ "a resource of AshBoundary.Test.Invalid.ExportedResource"
+      assert message =~ "domain-level `define`"
+      assert message =~ "Add a `define` to"
+    end
+
+    test "is rejected even when the resource already carries a define" do
+      assert %DslError{path: [:boundary, :exports]} =
+               Compile.error("""
+               defmodule AshBoundary.Test.Invalid.DefinedResource.Post do
+                 use Ash.Resource, domain: AshBoundary.Test.Invalid.DefinedResource
+
+                 attributes do
+                   uuid_primary_key :id
+                 end
+
+                 actions do
+                   defaults [:read]
+                 end
+               end
+
+               defmodule AshBoundary.Test.Invalid.DefinedResource do
+                 use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
+
+                 boundary do
+                   exports [AshBoundary.Test.Invalid.DefinedResource.Post]
+                 end
+
+                 resources do
+                   resource AshBoundary.Test.Invalid.DefinedResource.Post do
+                     define :get_post, action: :read
+                   end
+                 end
+               end
+               """)
+    end
+  end
+
   describe "a `deps` entry that is not a boundary" do
     test "is rejected" do
       error =

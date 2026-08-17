@@ -18,7 +18,7 @@ defmodule AshBoundary.DeclarationTest do
 
       assert String.ends_with?(file, "test/support/blog.ex")
       # Stored relative to the boundary root, which is what `boundary` expects.
-      assert Keyword.fetch!(opts, :exports) == [Post, Tag]
+      assert Keyword.fetch!(opts, :exports) == [Post, Tag, PostStatus]
     end
 
     test "turns on the alias checking boundary leaves off by default" do

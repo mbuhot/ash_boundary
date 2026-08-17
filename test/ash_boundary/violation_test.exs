@@ -10,10 +10,14 @@ defmodule AshBoundary.ViolationTest do
     AshBoundary.Test.Blog.Comment,
     AshBoundary.Test.Blog.Draft,
     AshBoundary.Test.Blog.Tag,
+    AshBoundary.Test.Blog.PostStatus,
+    AshBoundary.Test.Blog.DraftStatus,
     AshBoundary.Test.Reports,
     AshBoundary.Test.Reports.AllowedCaller,
     AshBoundary.Test.Reports.ForbiddenCaller,
     AshBoundary.Test.Reports.ForbiddenCallerDraft,
+    AshBoundary.Test.Reports.StatusCaller,
+    AshBoundary.Test.Reports.DraftStatusCaller,
     AshBoundary.Test.Isolated,
     AshBoundary.Test.Isolated.Caller,
     AshBoundary.Test.Analytics,
@@ -66,6 +70,38 @@ defmodule AshBoundary.ViolationTest do
     assert BoundaryCheck.reference_errors(@world, references) == [
              {:not_exported, AshBoundary.Test.Reports.ForbiddenCallerDraft,
               AshBoundary.Test.Blog.Draft}
+           ]
+  end
+
+  test "an `Ash.Type.Enum` named in `exports` is reachable from another domain" do
+    references =
+      BoundaryCheck.capture_references(AshBoundary.Test.Reports.StatusCaller, """
+      defmodule AshBoundary.Test.Reports.StatusCaller do
+        alias AshBoundary.Test.Blog.PostStatus
+
+        def published?(status), do: status in PostStatus.values()
+      end
+      """)
+
+    assert Enum.uniq(Enum.map(references, & &1.type)) == [:alias_reference, :call]
+    assert BoundaryCheck.reference_errors(@world, references) == []
+  end
+
+  test "the same kind of module left out of `exports` is caught" do
+    references =
+      BoundaryCheck.capture_references(AshBoundary.Test.Reports.DraftStatusCaller, """
+      defmodule AshBoundary.Test.Reports.DraftStatusCaller do
+        alias AshBoundary.Test.Blog.DraftStatus
+
+        def abandoned?(status), do: status in DraftStatus.values()
+      end
+      """)
+
+    errors = BoundaryCheck.reference_errors(@world, references)
+
+    assert Enum.uniq(errors) == [
+             {:not_exported, AshBoundary.Test.Reports.DraftStatusCaller,
+              AshBoundary.Test.Blog.DraftStatus}
            ]
   end
 
@@ -225,6 +261,8 @@ defmodule AshBoundary.ViolationTest do
       AshBoundary.Test.Reports.AllowedCaller,
       AshBoundary.Test.Reports.ForbiddenCaller,
       AshBoundary.Test.Reports.ForbiddenCallerDraft,
+      AshBoundary.Test.Reports.StatusCaller,
+      AshBoundary.Test.Reports.DraftStatusCaller,
       AshBoundary.Test.Isolated.Caller,
       AshBoundary.Test.Dashboard.AllowedCaller,
       AshBoundary.Test.Relations.AliasCaller,

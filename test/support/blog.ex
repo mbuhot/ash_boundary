@@ -1,9 +1,20 @@
+defmodule AshBoundary.Test.Blog.PostStatus do
+  @moduledoc false
+  use Ash.Type.Enum, values: [:draft, :published]
+end
+
+defmodule AshBoundary.Test.Blog.DraftStatus do
+  @moduledoc false
+  use Ash.Type.Enum, values: [:started, :abandoned]
+end
+
 defmodule AshBoundary.Test.Blog.Post do
   @moduledoc false
   use Ash.Resource, domain: AshBoundary.Test.Blog
 
   attributes do
     uuid_primary_key(:id)
+    attribute(:status, AshBoundary.Test.Blog.PostStatus)
   end
 
   actions do
@@ -34,6 +45,7 @@ defmodule AshBoundary.Test.Blog.Draft do
 
   attributes do
     uuid_primary_key(:id)
+    attribute(:status, AshBoundary.Test.Blog.DraftStatus)
   end
 
   actions do
@@ -72,9 +84,17 @@ defmodule AshBoundary.Test.Blog do
   `Tag` has both: a domain-level `define` (making it exported) and its own
   resource-level `code_interface` (making it independently callable as
   `Blog.Tag.list_tags/0`) — proving the two are not mutually exclusive.
+
+  `PostStatus` is an `Ash.Type.Enum` naming `Post`'s attribute type, and is listed in
+  `exports` so outside code may name it. `DraftStatus` is the same kind of module on
+  the internal `Draft`, and is left out of `exports`.
   """
 
   use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
+
+  boundary do
+    exports([AshBoundary.Test.Blog.PostStatus])
+  end
 
   resources do
     resource AshBoundary.Test.Blog.Post do

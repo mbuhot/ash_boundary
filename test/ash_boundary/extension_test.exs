@@ -68,12 +68,60 @@ defmodule AshBoundary.ExtensionTest do
       assert Blog.Tag in Boundary.Definition.get(Blog, nil).exports
     end
 
-    test "the exports are exactly the domain and its publicly-defined resources" do
-      assert Info.exports(Blog) == [Blog, Blog.Post, Blog.Tag]
+    test "the exports are the domain, its publicly-defined resources, and its declared exports" do
+      assert Info.exports(Blog) == [Blog, Blog.Post, Blog.Tag, Blog.PostStatus]
     end
 
     test "the boundary root is not listed, because `boundary` exports it implicitly" do
       refute Blog in Boundary.Definition.get(Blog, nil).exports
+    end
+  end
+
+  describe "declared exports" do
+    test "a module named in `exports` is exported" do
+      assert Blog.PostStatus in Boundary.Definition.get(Blog, nil).exports
+    end
+
+    test "a module of the same kind left out of `exports` stays internal" do
+      assert Blog.DraftStatus.values() == [:started, :abandoned]
+      refute Blog.DraftStatus in Boundary.Definition.get(Blog, nil).exports
+    end
+
+    test "`exports` is readable back off the domain" do
+      assert Info.declared_exports(Blog) == [Blog.PostStatus]
+      assert Info.declared_exports(AshBoundary.Test.Reports) == []
+    end
+
+    test "the domain module and repeated entries are deduplicated" do
+      Compile.modules("""
+      defmodule AshBoundary.Test.Union.Status do
+        use Ash.Type.Enum, values: [:on, :off]
+      end
+
+      defmodule AshBoundary.Test.Union do
+        use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
+
+        boundary do
+          exports [
+            AshBoundary.Test.Union,
+            AshBoundary.Test.Union.Status,
+            AshBoundary.Test.Union.Status
+          ]
+        end
+
+        resources do
+        end
+      end
+      """)
+
+      assert Info.exports(AshBoundary.Test.Union) == [
+               AshBoundary.Test.Union,
+               AshBoundary.Test.Union.Status
+             ]
+
+      opts = Declaration.definition(AshBoundary.Test.Union).opts
+
+      assert Keyword.fetch!(opts, :exports) == [Status]
     end
   end
 
@@ -116,12 +164,13 @@ defmodule AshBoundary.ExtensionTest do
     end
 
     test "the idiomatic parens-free form survives `mix format`" do
-      # `.formatter.exs` carries the `deps: 1` entry `mix spark.formatter` generates, and
-      # exports it to consuming apps. Without it, `deps [Foo]` would be rewritten to
+      # `.formatter.exs` carries the entries `mix spark.formatter` generates, and exports
+      # them to consuming apps. Without them, `deps [Foo]` would be rewritten to
       # `deps([Foo])` on every format.
       source = """
       boundary do
         deps [MyApp.Accounts, {MyApp.Codegen, :compile}]
+        exports [MyApp.Blog.PostStatus]
       end
       """
 

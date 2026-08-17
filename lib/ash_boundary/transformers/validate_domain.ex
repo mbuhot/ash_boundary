@@ -1,8 +1,9 @@
 defmodule AshBoundary.Transformers.ValidateDomain do
   @moduledoc """
   Rejects, at compile time, domains that `boundary` could not correctly
-  describe: a hand-written `use Boundary` alongside the extension, a resource
-  outside the domain's namespace, and a `deps` entry that is not a boundary.
+  describe: a hand-written `use Boundary` alongside the extension, a resource or
+  an export outside the domain's namespace, an `exports` entry that names a
+  resource, and a `deps` entry that is not a boundary.
   """
 
   use Spark.Dsl.Transformer
@@ -29,6 +30,8 @@ defmodule AshBoundary.Transformers.ValidateDomain do
 
     with :ok <- validate_no_manual_declaration(module),
          :ok <- validate_resources_are_nested(dsl, module),
+         :ok <- validate_exports_are_nested(dsl, module),
+         :ok <- validate_exports_are_not_resources(dsl, module),
          :ok <- validate_deps_are_boundaries(dsl, module) do
       {:ok, dsl}
     end
@@ -119,6 +122,68 @@ defmodule AshBoundary.Transformers.ValidateDomain do
   defp suggested_name(module, resource) do
     Module.concat(module, List.last(Module.split(resource)))
   end
+
+  defp validate_exports_are_nested(dsl, module) do
+    prefix = Module.split(module)
+
+    case Enum.reject(Info.declared_exports(dsl), &nested?(&1, prefix)) do
+      [] -> :ok
+      outside -> {:error, exports_not_nested_error(module, outside)}
+    end
+  end
+
+  defp exports_not_nested_error(module, outside) do
+    DslError.exception(
+      module: module,
+      path: [:boundary, :exports],
+      message: """
+      #{module_list(outside)} not nested under #{inspect(module)}.
+
+      `boundary` assigns a module to a boundary purely by module-name nesting, so \
+      #{inspect(module)} can only export modules called #{inspect(module)}.*.
+
+      Rename #{pronoun(outside)} to sit under #{inspect(module)}, or export \
+      #{pronoun(outside)} from the boundary that owns #{pronoun(outside)} and name that \
+      boundary in this domain's `deps`.\
+      """
+    )
+  end
+
+  defp validate_exports_are_not_resources(dsl, module) do
+    resources = MapSet.new(Info.resources(dsl))
+
+    case Enum.filter(Info.declared_exports(dsl), &MapSet.member?(resources, &1)) do
+      [] -> :ok
+      listed -> {:error, resource_exports_error(module, listed)}
+    end
+  end
+
+  defp resource_exports_error(module, listed) do
+    DslError.exception(
+      module: module,
+      path: [:boundary, :exports],
+      message: """
+      #{module_list(listed)} listed in `exports`, and also #{resource_of(listed)} \
+      #{inspect(module)}.
+
+      Whether a resource is exported comes from `resources`: one with at least one \
+      domain-level `define` is public, and one without stays internal. `exports` is for \
+      public modules that are not resources.
+
+      Add a `define` to #{inspect(hd(listed))} under `resources` instead, and remove \
+      #{pronoun(listed)} from `exports`.\
+      """
+    )
+  end
+
+  defp module_list([module]), do: "The module #{inspect(module)} is"
+
+  defp module_list(modules) do
+    "The modules #{Enum.map_join(modules, ", ", &inspect/1)} are"
+  end
+
+  defp resource_of([_module]), do: "a resource of"
+  defp resource_of(_modules), do: "resources of"
 
   defp validate_deps_are_boundaries(dsl, module) do
     problems =
