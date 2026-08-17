@@ -24,15 +24,12 @@ Add `--warnings-as-errors` to turn those reports into a failed build.
 The most common violation is a resource in one domain that holds a relationship
 to a resource in another. The fix is to depend on the other domain's public
 interface instead of its internals.
-See [the decoupling guide](guides/decoupling-with-calculations.md) and
-[`examples/03_decoupling_via_calculation`](examples/03_decoupling_via_calculation).
+[`examples/03_decoupling_via_calculation`](examples/03_decoupling_via_calculation)
+is a runnable before-and-after of that change.
 
-Two guides are in [`guides/`](guides):
-
-- [Decoupling with calculations](guides/decoupling-with-calculations.md): the
-  core pattern, step by step.
-- [Coupling scenarios](guides/coupling-scenarios.md): five kinds of coupling
-  that show up in a real Ash application, and what AshBoundary does about each.
+AshBoundary only generates the declaration. For what the declaration means, and
+for the options this DSL does not cover, read the
+[`boundary` documentation](https://hexdocs.pm/boundary).
 
 ## Installation
 

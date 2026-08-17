@@ -68,13 +68,10 @@ defmodule AshBoundary.MixProject do
       source_ref: "v#{@version}",
       extras: [
         {"README.md", title: "Overview"},
-        {"guides/coupling-scenarios.md", title: "Coupling Scenarios"},
-        {"guides/decoupling-with-calculations.md", title: "Decoupling via Calculations"},
         {"documentation/dsls/DSL-AshBoundary.md",
          title: "boundary DSL", search_data: Spark.Docs.search_data_for(AshBoundary)}
       ],
       groups_for_extras: [
-        Guides: ["guides/coupling-scenarios.md", "guides/decoupling-with-calculations.md"],
         Reference: [~r"documentation/dsls"]
       ],
       # README.md's links to `examples/*` and `LICENSE` are meant for GitHub, where the
@@ -107,10 +104,10 @@ defmodule AshBoundary.MixProject do
   defp package do
     [
       name: "ash_boundary",
-      # `guides` and `documentation` ship in the package tarball, not just the git repo,
-      # because hexdocs.pm builds docs from exactly what's in the release: an extra
-      # missing from here would 404 on hexdocs even though `mix docs` finds it locally.
-      files: ~w(lib guides documentation .formatter.exs mix.exs README.md LICENSE),
+      # `documentation` ships in the package tarball, not just the git repo, because
+      # hexdocs.pm builds docs from exactly what's in the release: an extra missing from
+      # here would 404 on hexdocs even though `mix docs` finds it locally.
+      files: ~w(lib documentation .formatter.exs mix.exs README.md LICENSE),
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url}
     ]
