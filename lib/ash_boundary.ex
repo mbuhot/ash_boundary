@@ -104,7 +104,7 @@ defmodule AshBoundary do
   time to avoid leaving a resource unguarded. Move resources into the domain's
   namespace before adopting AshBoundary.
 
-  ## `deps` is declared, not inferred
+  ## Declare `deps` by hand
 
   `deps` lists the other boundaries this domain may reference. AshBoundary never
   infers this list from existing code. Reviewing every cross-domain dependency
@@ -157,9 +157,9 @@ defmodule AshBoundary do
     describe: """
     Configures the `boundary` declared for this domain.
 
-    The section is optional: a domain extended with AshBoundary declares a boundary with
-    no deps even if the section is absent, which is the strictest and most useful
-    default. Add it to admit dependencies on other domains.
+    This section is optional. A domain with no `boundary` section declares a
+    boundary with zero deps, which is the strictest default. Add the section to
+    declare dependencies on other domains.
     """,
     examples: [
       """
@@ -173,13 +173,14 @@ defmodule AshBoundary do
         type: {:list, @deps_type},
         default: [],
         doc: """
-        Other boundaries this domain is allowed to reference.
+        The other boundaries this domain can reference.
 
-        Each entry must be a module that declares a boundary of its own — another
-        `Ash.Domain` extended with `AshBoundary`, or a module using `Boundary` directly.
-        A bare module is equivalent to `{module, :runtime}` and permits references of
-        every kind. `{module, :compile}` narrows that to compile-time references only,
-        so an ordinary runtime call to it becomes a violation.
+        Each entry must be a module that declares a boundary of its own: an
+        `Ash.Domain` extended with `AshBoundary`, or a module that calls
+        `use Boundary`. A bare module is equivalent to `{module, :runtime}` and
+        permits each kind of reference. `{module, :compile}` permits
+        compile-time references only, so a runtime call to that boundary
+        becomes a violation.
         """
       ]
     ]

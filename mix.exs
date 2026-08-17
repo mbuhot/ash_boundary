@@ -68,12 +68,13 @@ defmodule AshBoundary.MixProject do
       source_ref: "v#{@version}",
       extras: [
         {"README.md", title: "Overview"},
+        {"guides/coupling-scenarios.md", title: "Coupling Scenarios"},
         {"guides/decoupling-with-calculations.md", title: "Decoupling via Calculations"},
         {"documentation/dsls/DSL-AshBoundary.md",
          title: "boundary DSL", search_data: Spark.Docs.search_data_for(AshBoundary)}
       ],
       groups_for_extras: [
-        Guides: ["guides/decoupling-with-calculations.md"],
+        Guides: ["guides/coupling-scenarios.md", "guides/decoupling-with-calculations.md"],
         Reference: [~r"documentation/dsls"]
       ],
       # README.md's links to `examples/*` and `LICENSE` are meant for GitHub, where the
