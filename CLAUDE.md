@@ -60,6 +60,10 @@ It must also be a real boundary violation, meaning a reference the compiler
 rejects for crossing a boundary. A missing function, an undefined interface, or
 a call to a different action demonstrates something other than this library.
 
+And it must be code a competent developer would plausibly write by accident, a
+relationship into another domain's resource being the usual one. If nobody would
+write it, blocking it proves nothing.
+
 Do not build fixture directories, extra `MIX_ENV`s, `elixirc_paths` entries, or
 tests that shell out to `mix compile`. Do not paste captured compiler output
 into a README. The library's own test suite already proves that `boundary`
