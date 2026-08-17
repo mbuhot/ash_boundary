@@ -1,6 +1,7 @@
 import Config
 
-config :exported_vs_internal, ash_domains: [Catalog, Storefront]
+config :exported_vs_internal,
+  ash_domains: [ExportedVsInternal.Catalog, ExportedVsInternal.Storefront]
 
 if config_env() == :test do
   config :logger, level: :warning

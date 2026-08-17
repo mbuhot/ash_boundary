@@ -2,15 +2,19 @@ defmodule ExampleWeb.PostLiveTest do
   use ExampleWeb.ConnCase, async: false
 
   setup do
-    on_exit(&clear_posts/0)
-    clear_posts()
-    :ok
+    on_exit(&Example.TestData.clear/0)
+    Example.TestData.clear()
+
+    %{author: Example.Accounts.create_author!(%{name: "Mike Buhot", handle: "mbuhot"})}
   end
 
-  test "renders posts read through the domain, with calculations the domain loaded", %{conn: conn} do
-    Example.create_post!(%{
+  test "renders posts read through the domain, with calculations the domain loaded", %{
+    conn: conn,
+    author: author
+  } do
+    Example.Blog.create_post!(%{
       title: "Boundaries for Ash domains",
-      author: "mbuhot",
+      author_id: author.id,
       body: "A body long enough that the excerpt calculation has something to truncate."
     })
 
@@ -18,15 +22,22 @@ defmodule ExampleWeb.PostLiveTest do
 
     assert html =~ "1 published"
     assert html =~ "Boundaries for Ash domains"
-    assert html =~ "by mbuhot"
+    assert html =~ "by Mike Buhot (@mbuhot)"
     assert html =~ "A body long enough that the excerpt calc..."
     assert html =~ "12 words"
   end
 
-  test "unpublished posts do not render", %{conn: conn} do
-    Example.create_post!(%{
+  test "renders the authors read from the accounts domain", %{conn: conn, author: author} do
+    {:ok, live, html} = live(conn, "/")
+
+    assert html =~ "Mike Buhot (@mbuhot)"
+    assert has_element?(live, "#author-#{author.id}")
+  end
+
+  test "unpublished posts do not render", %{conn: conn, author: author} do
+    Example.Blog.create_post!(%{
       title: "Draft post",
-      author: "mbuhot",
+      author_id: author.id,
       body: "x",
       published?: false
     })
@@ -37,9 +48,16 @@ defmodule ExampleWeb.PostLiveTest do
     refute html =~ "Draft post"
   end
 
-  test "selecting a post renders it from a plain-data domain result", %{conn: conn} do
+  test "selecting a post renders it from a plain-data domain result", %{
+    conn: conn,
+    author: author
+  } do
     post =
-      Example.create_post!(%{title: "Selectable", author: "mbuhot", body: "Two words here"})
+      Example.Blog.create_post!(%{
+        title: "Selectable",
+        author_id: author.id,
+        body: "Two words here"
+      })
 
     {:ok, live, _html} = live(conn, "/")
 
@@ -49,13 +67,13 @@ defmodule ExampleWeb.PostLiveTest do
     assert html =~ "(3 words)"
   end
 
-  test "submitting the form persists a post through the domain", %{conn: conn} do
+  test "submitting the form persists a post through the domain", %{conn: conn, author: author} do
     {:ok, live, _html} = live(conn, "/")
 
     html =
       live
       |> form("#post-form",
-        post: %{title: "Written from a form", author: "mbuhot", body: "Body text"}
+        post: %{title: "Written from a form", author_id: author.id, body: "Body text"}
       )
       |> render_submit()
 
@@ -63,7 +81,7 @@ defmodule ExampleWeb.PostLiveTest do
     assert html =~ "Written from a form"
     assert html =~ "1 published"
 
-    assert ["Written from a form"] == Example.published_post_titles()
+    assert ["Written from a form"] == Example.Blog.published_post_titles()
   end
 
   test "submitting invalid input renders validation errors as plain strings", %{conn: conn} do
@@ -71,11 +89,11 @@ defmodule ExampleWeb.PostLiveTest do
 
     html =
       live
-      |> form("#post-form", post: %{title: "", author: "", body: ""})
+      |> form("#post-form", post: %{title: "", author_id: "", body: ""})
       |> render_submit()
 
     assert html =~ "is required"
-    assert Example.published_post_titles() == []
+    assert Example.Blog.published_post_titles() == []
   end
 
   test "live validation reports errors before submission", %{conn: conn} do
@@ -83,13 +101,9 @@ defmodule ExampleWeb.PostLiveTest do
 
     html =
       live
-      |> form("#post-form", post: %{title: "ok", author: "", body: ""})
+      |> form("#post-form", post: %{title: "ok", author_id: "", body: ""})
       |> render_change()
 
     assert html =~ "is required"
-  end
-
-  defp clear_posts do
-    Enum.each(Example.list_posts!(), &Example.delete_post!/1)
   end
 end

@@ -32,8 +32,6 @@ defmodule Example.MixProject do
   end
 
   # Specifies which paths to compile per environment.
-  defp elixirc_paths(:violation), do: ["lib", "violation"]
-  defp elixirc_paths(:undefined_form), do: ["lib", "violation_form"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 

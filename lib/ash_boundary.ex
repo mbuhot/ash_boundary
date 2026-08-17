@@ -43,16 +43,7 @@ defmodule AshBoundary do
     * All other modules in the domain's namespace are internal.
     * Referencing another domain requires an explicit `boundary` dep.
 
-  `boundary` exports modules, not functions, so a `define` publishes every
-  public function on that resource module.
-
-  Exports do not propagate. A relationship to a non-exported resource is a
-  violation, and AshBoundary sets `check: [aliases: true]` so `boundary` reports
-  it.
-
-  Resources must be namespaced under their domain. AshBoundary raises otherwise,
-  since `boundary` can neither export nor protect a module outside the
-  namespace.
+  AshBoundary sets `check: [aliases: true]` so `boundary` reports any cross-domain relationships as violations.
   """
 
   @deps_type {:or, [:module, {:tuple, [:module, {:one_of, [:compile, :runtime]}]}]}

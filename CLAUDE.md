@@ -52,7 +52,13 @@ permitted while the rest of `:ash` stays checked.
 Show it as commented-out code in the real source file, with the correct usage
 directly below it. A reader uncomments one line to watch the compiler reject it.
 
-One line of explanation above the commented code, no more. The commented code
+One short line of explanation above the commented code, no more. Name what is
+not allowed. Do not explain the mechanism behind it.
+
+    # Reading a resource through Ash is not allowed
+    # assign(socket, posts: Ash.read!(Example.Blog.Post))
+    assign(socket, posts: Example.Blog.list_published_posts!())
+ The commented code
 must describe a path the surrounding contract actually allows: never leave a
 clause that could not match, or that implies control flow the code rules out.
 

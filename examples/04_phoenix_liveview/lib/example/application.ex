@@ -3,8 +3,6 @@ defmodule Example.Application do
 
   use Application
 
-  use Boundary, top_level?: true, deps: [Example, ExampleWeb]
-
   @impl true
   def start(_type, _args) do
     children = [
@@ -29,15 +27,17 @@ defmodule Example.Application do
 
   defp maybe_seed_posts do
     if Application.get_env(:example, :seed_posts?, false) do
-      Example.create_post!(%{
+      author = Example.Accounts.create_author!(%{name: "Mike Buhot", handle: "mbuhot"})
+
+      Example.Blog.create_post!(%{
         title: "Boundaries for Ash domains",
-        author: "mbuhot",
+        author_id: author.id,
         body: "AshBoundary computes a boundary declaration from a domain's resources block."
       })
 
-      Example.create_post!(%{
+      Example.Blog.create_post!(%{
         title: "A web layer with no Ash surface",
-        author: "mbuhot",
+        author_id: author.id,
         body: "The LiveView reads structs and calls domain functions, and cannot call Ash itself."
       })
     end

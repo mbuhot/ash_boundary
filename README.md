@@ -71,7 +71,13 @@ This configuration has these effects:
 
 ## Examples
 
-See the [`examples/`](examples) directory. [`04_phoenix_liveview`](examples/04_phoenix_liveview) is the most realistic example.
+Two examples live in [`examples/`](examples), each its own Mix project:
+
+- [`01_exported_vs_internal`](examples/01_exported_vs_internal) has two domains. It covers
+  exported and internal resources, and a calculation that reads another domain's data through
+  that domain's exported interface instead of a relationship.
+- [`04_phoenix_liveview`](examples/04_phoenix_liveview) is a Phoenix application with a web
+  layer over a domain.
 
 
 ## Documentation

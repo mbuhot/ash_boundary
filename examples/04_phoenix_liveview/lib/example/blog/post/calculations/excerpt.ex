@@ -1,4 +1,4 @@
-defmodule Example.Post.Calculations.Excerpt do
+defmodule Example.Blog.Post.Calculations.Excerpt do
   @moduledoc """
   Truncates a post's body to a short excerpt.
   """

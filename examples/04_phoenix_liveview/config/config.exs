@@ -9,7 +9,7 @@ import Config
 
 config :example,
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Example]
+  ash_domains: [Example.Accounts, Example.Blog]
 
 # Configure the endpoint
 config :example, ExampleWeb.Endpoint,
