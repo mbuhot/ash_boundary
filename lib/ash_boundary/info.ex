@@ -114,6 +114,42 @@ defmodule AshBoundary.Info do
   end
 
   @doc """
+  Every module `read_only_relationships/1` sanctions a reference to, each
+  listed once: the targets of `read_only_relationship_targets/1`, plus the
+  modules each relationship's `manual` option names - the implementation
+  module itself, and any module given as one of its option values.
+
+  Returns `[]` unless `allow_read_only_relationships?/1` is set.
+  """
+  @spec read_only_reference_modules(domain()) :: [module()]
+  def read_only_reference_modules(domain) do
+    relationships = read_only_relationships(domain)
+
+    targets = Enum.map(relationships, & &1.destination)
+    manual = Enum.flat_map(relationships, &manual_modules/1)
+
+    Enum.uniq(targets ++ manual)
+  end
+
+  defp manual_modules(relationship) do
+    case Map.get(relationship, :manual) do
+      nil -> []
+      {module, opts} when is_atom(module) -> [module | manual_opt_modules(opts)]
+      module when is_atom(module) -> [module]
+    end
+  end
+
+  defp manual_opt_modules(opts) when is_list(opts) do
+    for {_key, value} <- opts, elixir_module?(value), do: value
+  end
+
+  defp manual_opt_modules(_opts), do: []
+
+  defp elixir_module?(value) do
+    is_atom(value) and String.starts_with?(Atom.to_string(value), "Elixir.")
+  end
+
+  @doc """
   The modules this domain exports: the domain module, each resource with at
   least one domain-level `define`, and the modules named by `declared_exports/1`.
 

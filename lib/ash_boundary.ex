@@ -70,6 +70,11 @@ defmodule AshBoundary do
 
   A two-way relationship declares the dep on the writable side only, so the two
   domains do not depend on each other.
+
+  For a `manual` relationship, the exemption also covers the modules the
+  `manual` option names: the implementation module itself, and any module given
+  as one of its option values. Those modules are part of the same read path the
+  relationship sanctions.
   """
 
   @deps_type {:or, [:module, {:tuple, [:module, {:one_of, [:compile, :runtime]}]}]}

@@ -54,6 +54,53 @@ defmodule AshBoundary.Test.Ledger do
   end
 end
 
+defmodule AshBoundary.Test.ViaTaggedPosts do
+  @moduledoc false
+  use Ash.Resource.ManualRelationship
+
+  @impl true
+  def load(_records, _opts, _context), do: {:ok, %{}}
+end
+
+defmodule AshBoundary.Test.Digest.Issue do
+  @moduledoc false
+  use Ash.Resource, domain: AshBoundary.Test.Digest
+
+  attributes do
+    uuid_primary_key(:id)
+  end
+
+  relationships do
+    has_many(:posts, AshBoundary.Test.Blog.Post,
+      writable?: false,
+      manual: {AshBoundary.Test.ViaTaggedPosts, tag_resource: AshBoundary.Test.Blog.Tag}
+    )
+  end
+
+  actions do
+    defaults([:read])
+  end
+end
+
+defmodule AshBoundary.Test.Digest do
+  @moduledoc """
+  Fixture domain with a read-only `manual` relationship whose options name a
+  second `Blog` resource, so the exemption has more to cover than the
+  destination: the implementation module and the option's `Blog.Tag` as well
+  as `Blog.Post`.
+  """
+
+  use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
+
+  boundary do
+    allow_read_only_relationships? true
+  end
+
+  resources do
+    resource(AshBoundary.Test.Digest.Issue)
+  end
+end
+
 defmodule AshBoundary.Test.Register.Line do
   @moduledoc false
   use Ash.Resource, domain: AshBoundary.Test.Register
