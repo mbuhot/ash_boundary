@@ -6,6 +6,7 @@ defmodule AshBoundary.Info do
   `t:Spark.Dsl.t/0` map a transformer receives.
   """
 
+  alias Ash.Resource.Info, as: ResourceInfo
   alias Spark.Dsl.Extension
 
   @typedoc "A `deps` entry, in one of the two forms the DSL accepts."
@@ -58,6 +59,61 @@ defmodule AshBoundary.Info do
   def resources(domain), do: Enum.map(resource_references(domain), & &1.resource)
 
   @doc """
+  Whether a read-only relationship may cross into another domain without a
+  `deps` entry.
+  """
+  @spec allow_read_only_relationships?(domain()) :: boolean()
+  def allow_read_only_relationships?(domain),
+    do: Extension.get_opt(domain, [:boundary], :allow_read_only_relationships?, false)
+
+  @doc """
+  The relationships this domain's resources declare on a resource outside the
+  domain's namespace.
+
+  A resource that is not compiled yet contributes nothing.
+  """
+  @spec cross_boundary_relationships(domain()) :: [Ash.Resource.Relationships.relationship()]
+  def cross_boundary_relationships(domain) do
+    prefix = Module.split(module(domain))
+
+    for resource <- resources(domain),
+        relationship <- relationships(resource),
+        not List.starts_with?(Module.split(relationship.destination), prefix),
+        do: relationship
+  end
+
+  @doc """
+  Whether a relationship is read-only, meaning it declares `writable?: false`.
+
+  A `many_to_many` has no `writable?` of its own and is never read-only.
+  """
+  @spec read_only_relationship?(Ash.Resource.Relationships.relationship()) :: boolean()
+  def read_only_relationship?(relationship), do: Map.get(relationship, :writable?) == false
+
+  @doc """
+  The relationships `cross_boundary_relationships/1` returns that are read-only.
+
+  Returns `[]` unless `allow_read_only_relationships?/1` is set.
+  """
+  @spec read_only_relationships(domain()) :: [Ash.Resource.Relationships.relationship()]
+  def read_only_relationships(domain) do
+    if allow_read_only_relationships?(domain) do
+      Enum.filter(cross_boundary_relationships(domain), &read_only_relationship?/1)
+    else
+      []
+    end
+  end
+
+  @doc "The resources named by `read_only_relationships/1`, each listed once."
+  @spec read_only_relationship_targets(domain()) :: [module()]
+  def read_only_relationship_targets(domain) do
+    domain
+    |> read_only_relationships()
+    |> Enum.map(& &1.destination)
+    |> Enum.uniq()
+  end
+
+  @doc """
   The modules this domain exports: the domain module, each resource with at
   least one domain-level `define`, and the modules named by `declared_exports/1`.
 
@@ -84,4 +140,11 @@ defmodule AshBoundary.Info do
   def module(domain), do: Extension.get_persisted(domain, :module)
 
   defp resource_references(domain), do: Extension.get_entities(domain, [:resources])
+
+  defp relationships(resource) do
+    case Code.ensure_compiled(resource) do
+      {:module, _module} -> ResourceInfo.relationships(resource)
+      {:error, _reason} -> []
+    end
+  end
 end

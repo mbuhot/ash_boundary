@@ -1,7 +1,7 @@
 # Used by "mix format"
 
 # Regenerate with `mix spark.formatter --extensions AshBoundary`.
-spark_locals_without_parens = [deps: 1, exports: 1]
+spark_locals_without_parens = [allow_read_only_relationships?: 1, deps: 1, exports: 1]
 
 [
   import_deps: [:ash, :spark],

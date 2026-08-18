@@ -50,6 +50,30 @@ Add the `:boundary` compiler to your project configuration:
 
 AshBoundary sets `check: [aliases: true]` so `boundary` reports any cross-domain relationships as violations.
 
+## Read-only relationships
+
+A relationship into another domain's resource needs a `deps` entry for that
+domain. With `allow_read_only_relationships? true`, a relationship declaring
+`writable?: false` does not, and the target must still be exported by the
+domain that owns it:
+
+    defmodule MyApp.Shipping do
+      use Ash.Domain, extensions: [AshBoundary]
+
+      boundary do
+        allow_read_only_relationships? true
+      end
+
+      resources do
+        resource MyApp.Shipping.Shipment do
+          define :get_shipment, action: :read
+        end
+      end
+    end
+
+A two-way relationship declares the dep on the writable side only, so the two
+domains do not depend on each other.
+
 
 ## boundary
 Configures the `boundary` declared for this domain.
@@ -80,6 +104,7 @@ end
 |------|------|---------|------|
 | [`deps`](#boundary-deps){: #boundary-deps } | `list(module \| {module, :compile \| :runtime})` | `[]` | The other boundaries this domain can reference. Each entry must be a module that declares a boundary of its own: an `Ash.Domain` extended with `AshBoundary`, or a module that calls `use Boundary`. A bare module is equivalent to `{module, :runtime}` and permits each kind of reference. `{module, :compile}` permits compile-time references only, so a runtime call to that boundary becomes a violation. |
 | [`exports`](#boundary-exports){: #boundary-exports } | `list(module)` | `[]` | Public modules of this domain that are not resources. An `Ash.Type.Enum` named in an exported resource's attribute types is the usual case: outside code has to name it, so it belongs in the domain's API. Each module must be nested under the domain's namespace. A resource of this domain is rejected here. Resource exports come from `resources`, where a domain-level `define` makes a resource public. |
+| [`allow_read_only_relationships?`](#boundary-allow_read_only_relationships?){: #boundary-allow_read_only_relationships? } | `boolean` | `false` | Whether this domain's resources may name another domain's resource in a read-only relationship without a `deps` entry for that domain. A relationship qualifies when it declares `writable?: false`, which is what stops it creating or updating the resource on the other side. The target still has to be exported by the domain that owns it. Set this on the read-only side of a two-way relationship. The writable side keeps its `deps` entry, so only one of the two directions is a dependency and the pair is not a cycle. The exemption covers a target module rather than one relationship, so a domain declaring both a read-only and a writable relationship to the same resource is rejected at compile time. A target is read-only from a domain or it is not. |
 
 
 

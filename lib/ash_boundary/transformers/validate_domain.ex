@@ -3,11 +3,13 @@ defmodule AshBoundary.Transformers.ValidateDomain do
   Rejects, at compile time, domains that `boundary` could not correctly
   describe: a hand-written `use Boundary` alongside the extension, a resource or
   an export outside the domain's namespace, an `exports` entry that names a
-  resource, and a `deps` entry that is not a boundary.
+  resource, a `deps` entry that is not a boundary, and a read-only relationship
+  whose target its own domain does not export.
   """
 
   use Spark.Dsl.Transformer
 
+  alias Ash.Resource.Info, as: ResourceInfo
   alias AshBoundary.Declaration
   alias AshBoundary.Info
   alias Spark.Dsl.Transformer
@@ -32,8 +34,25 @@ defmodule AshBoundary.Transformers.ValidateDomain do
          :ok <- validate_resources_are_nested(dsl, module),
          :ok <- validate_exports_are_nested(dsl, module),
          :ok <- validate_exports_are_not_resources(dsl, module),
-         :ok <- validate_deps_are_boundaries(dsl, module) do
+         :ok <- validate_deps_are_boundaries(dsl, module),
+         :ok <- validate_read_only_targets_are_not_written(dsl, module) do
+      defer_read_only_target_check(dsl, module)
       {:ok, dsl}
+    end
+  end
+
+  @doc false
+  @spec __after_compile__(Macro.Env.t(), binary()) :: :ok
+  def __after_compile__(%{module: module}, _bytecode) do
+    problems =
+      for relationship <- Info.read_only_relationships(module),
+          domain = owning_domain(relationship),
+          relationship.destination not in Info.exports(domain),
+          do: {relationship, domain}
+
+    case problems do
+      [] -> :ok
+      problems -> raise read_only_targets_error(module, problems)
     end
   end
 
@@ -263,6 +282,106 @@ defmodule AshBoundary.Transformers.ValidateDomain do
 
     `deps` entries are module names; check this one for a typo, and that the module it \
     names is compiled as part of this application or one of its dependencies.\
+    """
+  end
+
+  defp validate_read_only_targets_are_not_written(dsl, module) do
+    case written_read_only_targets(dsl) do
+      [] -> :ok
+      conflicts -> {:error, written_targets_error(module, conflicts)}
+    end
+  end
+
+  defp written_read_only_targets(dsl) do
+    if Info.allow_read_only_relationships?(dsl) do
+      {read_only, written} =
+        dsl
+        |> Info.cross_boundary_relationships()
+        |> Enum.split_with(&Info.read_only_relationship?/1)
+
+      for relationship <- read_only,
+          writer <- written,
+          writer.destination == relationship.destination,
+          do: {relationship, writer}
+    else
+      []
+    end
+  end
+
+  defp written_targets_error(module, conflicts) do
+    DslError.exception(
+      module: module,
+      path: [:boundary, :allow_read_only_relationships?],
+      message:
+        Enum.map_join(conflicts, "\n\n", fn {relationship, writer} ->
+          explain_written_target(relationship, writer)
+        end)
+    )
+  end
+
+  defp explain_written_target(relationship, writer) do
+    """
+    #{inspect(relationship.destination)} is the destination of the read-only relationship \
+    `:#{relationship.name}` on #{inspect(relationship.source)}, and of the writable \
+    #{writer.type} `:#{writer.name}` on #{inspect(writer.source)}.
+
+    `allow_read_only_relationships? true` exempts a target module rather than a single \
+    relationship, so the exemption would cover #{inspect(writer.source)}.#{writer.name} as \
+    well.
+
+    Name the domain that owns #{inspect(relationship.destination)} in this domain's `deps`, \
+    which is what #{inspect(writer.source)}.#{writer.name} needs in any case.\
+    """
+  end
+
+  defp defer_read_only_target_check(dsl, module) do
+    if Info.allow_read_only_relationships?(dsl) do
+      Module.put_attribute(module, :after_compile, {__MODULE__, :__after_compile__})
+    end
+
+    :ok
+  end
+
+  defp owning_domain(relationship) do
+    with {:module, _module} <- Code.ensure_compiled(relationship.destination),
+         domain when not is_nil(domain) <- declared_domain(relationship),
+         {:module, _module} <- Code.ensure_compiled(domain),
+         true <- Spark.Dsl.is?(domain, Ash.Domain) do
+      domain
+    else
+      _other -> nil
+    end
+  end
+
+  defp declared_domain(relationship) do
+    relationship.domain || ResourceInfo.domain(relationship.destination)
+  end
+
+  defp read_only_targets_error(module, problems) do
+    DslError.exception(
+      module: module,
+      path: [:boundary, :allow_read_only_relationships?],
+      message:
+        Enum.map_join(problems, "\n\n", fn {relationship, domain} ->
+          explain_target(module, relationship, domain)
+        end)
+    )
+  end
+
+  defp explain_target(module, relationship, domain) do
+    """
+    #{inspect(relationship.destination)} is the destination of the read-only relationship \
+    `:#{relationship.name}` on #{inspect(relationship.source)}, and is not exported by \
+    #{inspect(domain)}.
+
+    `allow_read_only_relationships? true` waives the `deps` entry for a read-only \
+    relationship. It does not waive the target's own export: \
+    #{inspect(relationship.destination)} has no domain-level `define` in \
+    #{inspect(domain)}, so it stays internal to that domain and #{inspect(module)} may not \
+    name it.
+
+    Add a `define` for #{inspect(relationship.destination)} to the `resources` block of \
+    #{inspect(domain)}, or remove the relationship.\
     """
   end
 end

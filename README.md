@@ -13,6 +13,7 @@ The `boundary` compiler enforces the declaration on each build.
 - Each module named in the `boundary` block's `exports` is public.
 - All other modules in the domain's namespace are internal.
 - Referencing another domain requires an explicit `boundary` dep.
+- A read-only relationship into another domain can be exempted from that dep, so one direction of a two-way relationship carries it.
 
 
 ## Installation

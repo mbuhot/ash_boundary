@@ -100,6 +100,49 @@ The calculation calls a `define`d interface function on `MyApp.Customers`. Ash
 passes `calculate/3` the whole batch of records, so collect the ids and make one
 call rather than one call per record.
 
+## Read-only relationships
+
+A relationship into another domain needs a `deps` entry for that domain, unless
+the referencing domain sets `allow_read_only_relationships? true` and the
+relationship declares `writable?: false`:
+
+```elixir
+defmodule MyApp.Shipping do
+  use Ash.Domain, extensions: [AshBoundary]
+
+  boundary do
+    allow_read_only_relationships? true
+  end
+
+  resources do
+    resource MyApp.Shipping.Shipment do
+      define :get_shipment, action: :read
+    end
+  end
+end
+
+# In MyApp.Shipping.Shipment
+belongs_to :order, MyApp.Orders.Order, writable?: false, attribute_writable?: true
+```
+
+`writable?: false` is what stops the relationship creating or updating the other
+domain's resource. `attribute_writable?` does not matter here: it governs the
+foreign key on this resource, which a read-only relationship still needs in
+order to point at a record. `writable?` defaults to `true`, and `many_to_many`
+has no `writable?` at all, so it never qualifies.
+
+The target must still be exported by the domain that owns it. AshBoundary checks
+that itself and rejects the domain at compile time otherwise.
+
+Use this for the read-only half of a two-way relationship. The writable half
+keeps its `deps` entry, so only one direction is a dependency and the two domains
+are not a cycle.
+
+The exemption covers the target module rather than one relationship, so a domain
+cannot hold both a read-only and a writable relationship to the same resource.
+AshBoundary rejects that at compile time and names the dep to add, so the
+exemption never waives a write.
+
 ## Constraints
 
 Resources and exported modules must be namespaced under their domain.

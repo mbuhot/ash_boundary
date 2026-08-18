@@ -24,6 +24,7 @@ defmodule AshBoundary.Transformers.DeclareBoundary do
     Declaration.declare(Transformer.get_persisted(dsl, :module),
       deps: Info.deps(dsl),
       exports: Info.exports(dsl),
+      dirty_xrefs: Info.read_only_relationship_targets(dsl),
       check: Declaration.check_opts(),
       top_level?: true,
       file: Transformer.get_persisted(dsl, :file),
