@@ -88,6 +88,9 @@ Two examples live in [`examples/`](examples), each its own Mix project:
 With [`clarity`](https://hex.pm/packages/clarity) installed, each domain gains a "Boundary
 Dependencies" tab holding a diagram of its `deps`, where clicking a node opens that domain.
 
+The diagram stacks domains in tiers by their distance from the domains that depend on nothing,
+and leaves out any edge a longer path already implies.
+
 ## Usage rules
 
 The package ships a `usage-rules.md` for

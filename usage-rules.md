@@ -152,6 +152,10 @@ recursively, rooted at that domain. Clicking a node opens that domain in Clarity
 A `{module, :compile}` dep is a dashed edge, and a dep declared by hand with
 `use Boundary` is drawn as a module rather than a domain.
 
+Domains sit in tiers by their distance from the domains that depend on nothing,
+and an edge a longer path already implies is left out. A compile-time edge is
+kept unless the implying path is compile-time throughout.
+
 Nothing to configure. AshBoundary registers the content provider through its own
 application environment, and `AshBoundary.Clarity.DomainDependencies` is only
 compiled when `clarity` is available, so a project without it is unaffected.

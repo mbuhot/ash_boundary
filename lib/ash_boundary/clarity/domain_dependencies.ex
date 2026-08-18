@@ -9,6 +9,11 @@ with {:module, Clarity.Content} <- Code.ensure_loaded(Clarity.Content) do
 
     @highlight %{light: "#FF914D", dark: "#ff5757"}
 
+    @typep edge :: {module(), module(), :compile | :runtime}
+    @typep adjacency :: %{optional(module()) => [module()]}
+    @typep seen :: %{optional(module()) => true}
+    @typep depths :: %{optional(module()) => non_neg_integer()}
+
     @impl Clarity.Content
     def name, do: "Boundary Dependencies"
 
@@ -35,11 +40,12 @@ with {:module, Clarity.Content} <- Code.ensure_loaded(Clarity.Content) do
     @spec dot([module()], [module()], Clarity.Content.static_content_props()) :: iodata()
     defp dot(roots, highlight, %{theme: theme}) do
       {modules, edges} = walk(roots, %{}, [])
+      {edges, layers} = layout(modules, edges)
 
       [
         "digraph {\n",
         "  bgcolor = transparent;\n",
-        "  rankdir = LR;\n",
+        "  rankdir = TB;\n",
         "  node [fontname = \"system-ui\"",
         node_theme(theme),
         "];\n",
@@ -47,14 +53,13 @@ with {:module, Clarity.Content} <- Code.ensure_loaded(Clarity.Content) do
         edge_theme(theme),
         "];\n",
         Enum.map(modules, &node_statement(&1, highlight, theme)),
+        Enum.map(layers, &rank_statement/1),
         Enum.map(edges, &edge_statement/1),
         "}\n"
       ]
     end
 
-    @spec walk([module()], %{optional(module()) => true}, [
-            {module(), module(), :compile | :runtime}
-          ]) :: {[module()], [{module(), module(), :compile | :runtime}]}
+    @spec walk([module()], seen(), [edge()]) :: {[module()], [edge()]}
     defp walk([], seen, edges), do: {seen |> Map.keys() |> Enum.sort(), Enum.reverse(edges)}
 
     defp walk([module | queue], seen, edges) do
@@ -69,6 +74,93 @@ with {:module, Clarity.Content} <- Code.ensure_loaded(Clarity.Content) do
           Enum.reduce(deps, edges, &[{module, Info.dep_module(&1), dep_type(&1)} | &2])
         )
       end
+    end
+
+    @spec layout([module()], [edge()]) :: {[edge()], [[module()]]}
+    defp layout(modules, edges) do
+      graph = adjacency(edges)
+
+      if cyclic?(modules, graph) do
+        {edges, []}
+      else
+        reduced = reduce(edges, graph)
+        {reduced, layers(modules, adjacency(reduced))}
+      end
+    end
+
+    @spec reduce([edge()], adjacency()) :: [edge()]
+    defp reduce(edges, graph) do
+      compile_graph = edges |> Enum.filter(&match?({_from, _to, :compile}, &1)) |> adjacency()
+
+      Enum.reject(edges, fn
+        {from, to, :compile} -> implied?(compile_graph, from, to)
+        {from, to, :runtime} -> implied?(graph, from, to)
+      end)
+    end
+
+    @spec implied?(adjacency(), module(), module()) :: boolean()
+    defp implied?(graph, from, to) do
+      graph
+      |> Map.get(from, [])
+      |> Enum.any?(&(&1 != to and reachable?(graph, [&1], %{}, to)))
+    end
+
+    @spec cyclic?([module()], adjacency()) :: boolean()
+    defp cyclic?(modules, graph) do
+      Enum.any?(modules, &reachable?(graph, Map.get(graph, &1, []), %{}, &1))
+    end
+
+    @spec reachable?(adjacency(), [module()], seen(), module()) :: boolean()
+    defp reachable?(_graph, [], _seen, _target), do: false
+
+    defp reachable?(graph, [module | queue], seen, target) do
+      cond do
+        module == target ->
+          true
+
+        Map.has_key?(seen, module) ->
+          reachable?(graph, queue, seen, target)
+
+        true ->
+          reachable?(
+            graph,
+            Map.get(graph, module, []) ++ queue,
+            Map.put(seen, module, true),
+            target
+          )
+      end
+    end
+
+    @spec layers([module()], adjacency()) :: [[module()]]
+    defp layers(modules, graph) do
+      depths = Enum.reduce(modules, %{}, &depth(&1, graph, &2))
+
+      modules
+      |> Enum.group_by(&Map.fetch!(depths, &1))
+      |> Enum.sort()
+      |> Enum.map(fn {_depth, layer} -> layer end)
+    end
+
+    @spec depth(module(), adjacency(), depths()) :: depths()
+    defp depth(module, graph, depths) do
+      if Map.has_key?(depths, module) do
+        depths
+      else
+        deps = Map.get(graph, module, [])
+        depths = Enum.reduce(deps, depths, &depth(&1, graph, &2))
+
+        Map.put(depths, module, 1 + Enum.reduce(deps, -1, &max(&2, Map.fetch!(depths, &1))))
+      end
+    end
+
+    @spec adjacency([edge()]) :: adjacency()
+    defp adjacency(edges) do
+      Enum.group_by(edges, fn {from, _to, _type} -> from end, fn {_from, to, _type} -> to end)
+    end
+
+    @spec rank_statement([module()]) :: iodata()
+    defp rank_statement(modules) do
+      ["  { rank = same; ", Enum.map(modules, &[dot_id(&1), "; "]), "}\n"]
     end
 
     @spec node_statement(module(), [module()], Clarity.Content.theme()) :: iodata()
@@ -94,7 +186,7 @@ with {:module, Clarity.Content} <- Code.ensure_loaded(Clarity.Content) do
       ]
     end
 
-    @spec edge_statement({module(), module(), :compile | :runtime}) :: iodata()
+    @spec edge_statement(edge()) :: iodata()
     defp edge_statement({from, to, :compile}) do
       ["  ", dot_id(from), " -> ", dot_id(to), " [style = dashed, label = \" compile\"];\n"]
     end
