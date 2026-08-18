@@ -9,10 +9,12 @@ defmodule AshBoundary.ReadOnlyRelationshipTest do
   alias AshBoundary.Test.Blog
   alias AshBoundary.Test.BoundaryCheck
   alias AshBoundary.Test.Compile
+  alias AshBoundary.Test.Digest
   alias AshBoundary.Test.Fulfilment
   alias AshBoundary.Test.Ledger
   alias AshBoundary.Test.Orders
   alias AshBoundary.Test.Register
+  alias AshBoundary.Test.ViaTaggedPosts
   alias Spark.Error.DslError
 
   @world [
@@ -23,6 +25,8 @@ defmodule AshBoundary.ReadOnlyRelationshipTest do
     AshBoundary.Test.Blog.Tag,
     AshBoundary.Test.Blog.PostStatus,
     AshBoundary.Test.Blog.DraftStatus,
+    AshBoundary.Test.Digest,
+    AshBoundary.Test.Digest.Issue,
     AshBoundary.Test.Ledger,
     AshBoundary.Test.Ledger.Entry,
     AshBoundary.Test.Ledger.Adjustment,
@@ -55,6 +59,24 @@ defmodule AshBoundary.ReadOnlyRelationshipTest do
 
     test "names only the read-only target of a domain declaring both kinds" do
       assert Info.read_only_relationship_targets(Ledger) == [Blog.Post]
+    end
+
+    test "names the modules a `manual` option carries, alongside the destination" do
+      assert Info.read_only_reference_modules(Digest) == [
+               Blog.Post,
+               ViaTaggedPosts,
+               Blog.Tag
+             ]
+
+      assert Keyword.fetch!(Declaration.definition(Digest).opts, :dirty_xrefs) == [
+               Blog.Post,
+               ViaTaggedPosts,
+               Blog.Tag
+             ]
+    end
+
+    test "keeps `manual` modules out of the targets, which stay destinations only" do
+      assert Info.read_only_relationship_targets(Digest) == [Blog.Post]
     end
 
     test "reads `writable?` alone, so a writable foreign key still qualifies" do
@@ -107,6 +129,22 @@ defmodule AshBoundary.ReadOnlyRelationshipTest do
                {:normal, Register.Line, Blog.Post}
              ]
     end
+
+    test "permits the module a `manual` option names, when read-only" do
+      references = references(Digest.Issue, source(Digest.Issue, Digest, manual_posts()))
+
+      assert Enum.any?(references, &(&1.to == Blog.Tag))
+      assert BoundaryCheck.reference_errors(@world, references) == []
+    end
+
+    test "reports a `manual` option module without `allow_read_only_relationships?`" do
+      references = references(Register.Line, source(Register.Line, Register, manual_posts()))
+
+      errors = BoundaryCheck.reference_errors(@world, references)
+
+      assert {:normal, Register.Line, Blog.Tag} in errors
+      assert {:normal, Register.Line, Blog.Post} in errors
+    end
   end
 
   describe "a two-way relationship" do
@@ -119,7 +157,10 @@ defmodule AshBoundary.ReadOnlyRelationshipTest do
     end
 
     test "leaves `boundary` no error to report anywhere in the world" do
-      references = references(Ledger.Entry, read_only_post()) ++ two_way_references()
+      references =
+        references(Ledger.Entry, read_only_post()) ++
+          references(Digest.Issue, source(Digest.Issue, Digest, manual_posts())) ++
+          two_way_references()
 
       assert BoundaryCheck.errors(@world, references) == []
     end
@@ -325,6 +366,14 @@ defmodule AshBoundary.ReadOnlyRelationshipTest do
         Orders.Order,
         source(Orders.Order, Orders, "belongs_to :shipment, AshBoundary.Test.Fulfilment.Shipment")
       )
+  end
+
+  defp manual_posts do
+    """
+    has_many :posts, AshBoundary.Test.Blog.Post,
+          writable?: false,
+          manual: {AshBoundary.Test.ViaTaggedPosts, tag_resource: AshBoundary.Test.Blog.Tag}
+    """
   end
 
   defp read_only_post do
