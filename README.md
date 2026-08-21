@@ -6,14 +6,19 @@ AshBoundary is a Spark DSL extension for [Ash](https://hexdocs.pm/ash) domains.
 It derives a [`boundary`](https://hex.pm/packages/boundary) declaration from the domain DSL.
 The `boundary` compiler enforces the declaration on each build.
 
+Every option in the `boundary` block passes straight through to `boundary`, unchanged: `deps`,
+`exports`, `check`, `type`, `dirty_xrefs` all mean exactly what they mean on a hand-written
+`use Boundary`. AshBoundary computes one thing on top: `exports` gains the domain module itself
+and every resource with at least one domain-level `define`.
+
 ## Conventions
 
 - The domain module is public.
 - Each resource that exposes a code interface in the domain is public.
 - Each module named in the `boundary` block's `exports` is public.
 - All other modules in the domain's namespace are internal.
-- Referencing another domain requires an explicit `boundary` dep.
-- A read-only relationship into another domain can be exempted from that dep, so one direction of a two-way relationship carries it.
+- Referencing another domain requires an explicit `boundary` dep, subject to whatever `check`
+  that domain declares.
 
 
 ## Installation

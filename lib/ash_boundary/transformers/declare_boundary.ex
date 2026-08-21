@@ -21,15 +21,20 @@ defmodule AshBoundary.Transformers.DeclareBoundary do
   @doc false
   @spec transform(Spark.Dsl.t()) :: {:ok, Spark.Dsl.t()}
   def transform(dsl) do
-    Declaration.declare(Transformer.get_persisted(dsl, :module),
-      deps: Info.deps(dsl),
-      exports: Info.exports(dsl),
-      dirty_xrefs: Info.read_only_reference_modules(dsl),
-      check: Declaration.check_opts(),
-      top_level?: true,
-      file: Transformer.get_persisted(dsl, :file),
-      line: 1
-    )
+    opts =
+      [
+        deps: Info.deps(dsl),
+        exports: Info.exports(dsl),
+        dirty_xrefs: Info.dirty_xrefs(dsl),
+        check: Info.check(dsl),
+        type: Info.type(dsl),
+        top_level?: true,
+        file: Transformer.get_persisted(dsl, :file),
+        line: 1
+      ]
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+
+    Declaration.declare(Transformer.get_persisted(dsl, :module), opts)
 
     {:ok, dsl}
   end

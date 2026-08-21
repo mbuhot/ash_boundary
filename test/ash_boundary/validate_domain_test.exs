@@ -285,150 +285,16 @@ defmodule AshBoundary.ValidateDomainTest do
   end
 
   describe "a `deps` entry that is not a boundary" do
-    test "is rejected" do
-      error =
-        Compile.error("""
-        defmodule AshBoundary.Test.Invalid.PlainDep do
-          use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
-
-          boundary do
-            deps [Enum]
-          end
-
-          resources do
-          end
-        end
-        """)
-
-      assert %DslError{path: [:boundary, :deps]} = error
-      assert Exception.message(error) =~ "Enum, which is not a boundary"
-      assert Exception.message(error) =~ "add `extensions: [AshBoundary]`"
-    end
-
-    test "is rejected when it names a module that does not exist" do
-      error =
-        Compile.error("""
-        defmodule AshBoundary.Test.Invalid.MissingDep do
-          use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
-
-          boundary do
-            deps [AshBoundary.Test.NoSuchDomain]
-          end
-
-          resources do
-          end
-        end
-        """)
-
-      assert %DslError{path: [:boundary, :deps]} = error
-      assert Exception.message(error) =~ "could not be loaded"
-      assert Exception.message(error) =~ "check this one for a typo"
-    end
-
-    test "is rejected when a domain lists itself" do
-      error =
-        Compile.error("""
-        defmodule AshBoundary.Test.Invalid.SelfDep do
-          use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
-
-          boundary do
-            deps [__MODULE__]
-          end
-
-          resources do
-          end
-        end
-        """)
-
-      assert %DslError{path: [:boundary, :deps]} = error
-      assert Exception.message(error) =~ "lists itself in `deps`"
-    end
-
-    test "an Ash.Domain without the extension is still not a boundary" do
-      Compile.modules("""
-      defmodule AshBoundary.Test.Invalid.Unextended do
-        use Ash.Domain, validate_config_inclusion?: false
-
-        resources do
-        end
-      end
-      """)
-
-      error =
-        Compile.error("""
-        defmodule AshBoundary.Test.Invalid.DependsOnUnextended do
-          use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
-
-          boundary do
-            deps [AshBoundary.Test.Invalid.Unextended]
-          end
-
-          resources do
-          end
-        end
-        """)
-
-      assert %DslError{path: [:boundary, :deps]} = error
-      assert Exception.message(error) =~ "which is not a boundary"
-    end
-
-    @tag :tmp_dir
-    test "two domains depending on each other fail cleanly as a cycle", %{tmp_dir: tmp_dir} do
-      # Checking a dep calls `Code.ensure_compiled/1`, so a mutual dependency is the one
-      # case where the dep is real but unanswerable. Elixir breaks the cycle rather than
-      # hanging, handing back `{:error, :unavailable}` — which must not be reported as
-      # the missing-module "check this for a typo" case.
-      message =
-        Compile.parallel_error(tmp_dir, [
-          {"cycle_a.ex",
-           """
-           defmodule AshBoundary.Test.Invalid.CycleA do
-             use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
-
-             boundary do
-               deps [AshBoundary.Test.Invalid.CycleB]
-             end
-
-             resources do
-             end
-           end
-           """},
-          {"cycle_b.ex",
-           """
-           defmodule AshBoundary.Test.Invalid.CycleB do
-             use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
-
-             boundary do
-               deps [AshBoundary.Test.Invalid.CycleA]
-             end
-
-             resources do
-             end
-           end
-           """}
-        ])
-
-      assert message =~ "depend on each other"
-      assert message =~ "AshBoundary.Test.Invalid.CycleA"
-      assert message =~ "AshBoundary.Test.Invalid.CycleB"
-      assert message =~ "Break the cycle"
-      # Either side may be the one that loses the race, but neither may be blamed on a typo.
-      refute message =~ "typo"
-    end
-
-    test "a plain `use Boundary` module is accepted, since it is a real boundary" do
-      Compile.modules("""
-      defmodule AshBoundary.Test.HandWritten do
-        use Boundary
-      end
-      """)
-
+    test "compiles fine, since AshBoundary no longer validates deps itself" do
+      # `deps` passes straight through to `boundary`, exactly as `use Boundary, deps: [...]`
+      # would. Whether an entry names a real boundary is left to `boundary`'s own compiler,
+      # the same as it would be for a hand-written declaration.
       refute Compile.error("""
-             defmodule AshBoundary.Test.Invalid.DependsOnHandWritten do
+             defmodule AshBoundary.Test.Invalid.PlainDep do
                use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false
 
                boundary do
-                 deps [AshBoundary.Test.HandWritten]
+                 deps [Enum]
                end
 
                resources do

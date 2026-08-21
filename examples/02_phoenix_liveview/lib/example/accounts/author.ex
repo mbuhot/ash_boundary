@@ -18,6 +18,11 @@ defmodule Example.Accounts.Author do
 
   relationships do
     has_many :invitations, Example.Accounts.Invitation
+
+    # The reverse direction of the relationship on `Blog.Post`. `Accounts` declares no
+    # `deps` on `Blog` at all, and this still compiles: the same alias reference rule
+    # applies in both directions.
+    has_many :posts, Example.Blog.Post
   end
 
   calculations do

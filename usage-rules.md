@@ -68,8 +68,11 @@ domain-level `define` instead.
 ## deps
 
 `deps` lists the other boundaries this domain may reference. It is never
-inferred. Each entry must be a boundary: another `Ash.Domain` extended with
-AshBoundary, or a module that calls `use Boundary`.
+inferred, and passes straight through to `boundary`. Each entry should be a
+boundary: another `Ash.Domain` extended with AshBoundary, or a module that
+calls `use Boundary`. AshBoundary does not check this itself; an entry that
+is not a boundary is reported by `boundary`'s own compiler, the same as it
+would be for a hand-written `use Boundary, deps: [...]`.
 
 ```elixir
 boundary do
@@ -82,12 +85,42 @@ compile-time references, so an ordinary runtime call becomes a violation.
 
 A dep grants access to the other domain's exports only.
 
-## Replace a cross-domain relationship with a calculation
+## Passed through unchanged
 
-A relationship names another domain's resource module, and AshBoundary sets
-`check: [aliases: true]`, so `boundary` reports it. Do not make the target
-resource public to silence it. Store the id and read the other domain through
-its exported interface:
+`check`, `type`, and `dirty_xrefs` in the `boundary` block go straight to
+`boundary`, exactly as they would on a hand-written `use Boundary`. AshBoundary
+applies no default and no interpretation of its own to any of them; see
+`Boundary`'s own docs for what each one does. Left unset, a domain gets
+whatever `boundary` itself defaults to, or whatever the consuming project sets
+in `mix.exs` under `boundary: [default: [check: ..., type: ...]]`.
+
+## Relationships between domains
+
+`boundary` does not check alias references by default, and AshBoundary sets no
+`check` option of its own. A relationship (`belongs_to`, `has_many`, and so on)
+naming a resource in another domain compiles to an alias reference, so it is
+not checked unless the domain declares `check: [aliases: true]` itself. A
+relationship in either direction, or in both directions at once, compiles
+cleanly with no `deps` entry and no export required on the far side.
+
+A `define`d call into another domain, by contrast, is a `:call` reference and
+is always checked. To also enforce relationships, opt in per domain:
+
+```elixir
+defmodule MyApp.Orders do
+  use Ash.Domain, extensions: [AshBoundary]
+
+  boundary do
+    deps [MyApp.Customers]
+    check [aliases: true]
+  end
+end
+```
+
+With that set, a relationship into a non-exported or undeclared domain is
+reported the same way a `:call` reference would be. Replace it with an id
+attribute and a calculation that reads the other domain through its exported
+interface:
 
 ```elixir
 # In MyApp.Orders.Order
@@ -99,49 +132,6 @@ calculate :customer_name, :string, MyApp.Orders.Order.Calculations.CustomerName
 The calculation calls a `define`d interface function on `MyApp.Customers`. Ash
 passes `calculate/3` the whole batch of records, so collect the ids and make one
 call rather than one call per record.
-
-## Read-only relationships
-
-A relationship into another domain needs a `deps` entry for that domain, unless
-the referencing domain sets `allow_read_only_relationships? true` and the
-relationship declares `writable?: false`:
-
-```elixir
-defmodule MyApp.Shipping do
-  use Ash.Domain, extensions: [AshBoundary]
-
-  boundary do
-    allow_read_only_relationships? true
-  end
-
-  resources do
-    resource MyApp.Shipping.Shipment do
-      define :get_shipment, action: :read
-    end
-  end
-end
-
-# In MyApp.Shipping.Shipment
-belongs_to :order, MyApp.Orders.Order, writable?: false, attribute_writable?: true
-```
-
-`writable?: false` is what stops the relationship creating or updating the other
-domain's resource. `attribute_writable?` does not matter here: it governs the
-foreign key on this resource, which a read-only relationship still needs in
-order to point at a record. `writable?` defaults to `true`, and `many_to_many`
-has no `writable?` at all, so it never qualifies.
-
-The target must still be exported by the domain that owns it. AshBoundary checks
-that itself and rejects the domain at compile time otherwise.
-
-Use this for the read-only half of a two-way relationship. The writable half
-keeps its `deps` entry, so only one direction is a dependency and the two domains
-are not a cycle.
-
-The exemption covers the target module rather than one relationship, so a domain
-cannot hold both a read-only and a writable relationship to the same resource.
-AshBoundary rejects that at compile time and names the dep to add, so the
-exemption never waives a write.
 
 ## Constraints
 
@@ -161,9 +151,10 @@ application, whatever namespace it sits under.
 ## Boundaries you write by hand
 
 A module that is not a domain, such as a Phoenix web layer, declares its own
-boundary with `use Boundary`. Such a boundary does not inherit AshBoundary's
-defaults, so set `check: [aliases: true]` on it explicitly or a reference that
-only names a module goes unchecked.
+boundary with `use Boundary`. An AshBoundary domain carries no defaults
+`use Boundary` would not also carry, so the two behave the same way: set
+`check: [aliases: true]` explicitly on whichever one needs alias references
+checked, or a reference that only names a module goes unchecked.
 
 To forbid a whole application, name it in `check: [apps: [...]]` and leave it out
 of `deps`:

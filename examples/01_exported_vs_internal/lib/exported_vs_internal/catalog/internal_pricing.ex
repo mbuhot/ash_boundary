@@ -16,6 +16,13 @@ defmodule ExportedVsInternal.Catalog.InternalPricing do
     attribute :margin, :float, allow_nil?: false, public?: true
   end
 
+  relationships do
+    # The reverse direction of the relationship on `Storefront.Listing`. `Catalog` declares
+    # no `deps` on `Storefront` at all, and this still compiles: the same alias reference
+    # rule applies in both directions.
+    has_one :listing, ExportedVsInternal.Storefront.Listing, destination_attribute: :pricing_id
+  end
+
   calculations do
     calculate :sale_price, :float, expr(cost * (1 + margin))
   end

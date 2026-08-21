@@ -37,30 +37,4 @@ defmodule AshBoundary.Test.Compile do
 
     Enum.map(compiled, fn {module, _binary} -> module end)
   end
-
-  @doc """
-  Writes `sources` as files under `dir` and compiles them together through the parallel
-  compiler, returning the first error message or `nil`.
-
-  `Code.compile_string/1` compiles sequentially in the calling process, so it cannot
-  produce the one situation this is for: two modules being compiled at once, each waiting
-  on the other. Going through `Kernel.ParallelCompiler` is what makes
-  `Code.ensure_compiled/1` return `{:error, :unavailable}`.
-  """
-  @spec parallel_error(Path.t(), [{Path.t(), String.t()}]) :: String.t() | nil
-  def parallel_error(dir, sources) do
-    paths =
-      for {name, source} <- sources do
-        path = Path.join(dir, name)
-        File.write!(path, source)
-        path
-      end
-
-    {result, _output} = with_io(:stderr, fn -> Kernel.ParallelCompiler.compile(paths) end)
-
-    case result do
-      {:error, [{_file, _position, message} | _rest], _warnings} -> message
-      _compiled -> nil
-    end
-  end
 end

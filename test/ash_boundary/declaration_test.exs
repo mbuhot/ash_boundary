@@ -21,15 +21,14 @@ defmodule AshBoundary.DeclarationTest do
       assert Keyword.fetch!(opts, :exports) == [Post, Tag, PostStatus]
     end
 
-    test "turns on the alias checking boundary leaves off by default" do
-      # This repo's own `mix.exs` carries no `boundary:` configuration at all, so this is
-      # the library's default and nothing else. Asserting on the *normalized* definition
-      # rather than the raw opts is the point: `check.aliases` is the exact field
-      # `Boundary.Checker` consults before it will report an `:alias_reference` violation.
+    test "leaves `check` unset, so `boundary`'s own default stands" do
+      # `Blog` declares no `check` option in its `boundary` block, and AshBoundary adds
+      # none of its own, so `boundary` normalizes it exactly as it would a hand-written
+      # `use Boundary` with no `check:` at all.
       normalized = Boundary.Definition.get(Blog, %{Blog => Declaration.definition(Blog)})
 
-      assert normalized.check.aliases
-      assert Keyword.fetch!(Declaration.definition(Blog).opts, :check) == [aliases: true]
+      refute normalized.check.aliases
+      refute Keyword.has_key?(Declaration.definition(Blog).opts, :check)
     end
 
     test "declares the domain top level, so a nested domain is nobody's child" do

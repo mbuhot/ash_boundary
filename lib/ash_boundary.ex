@@ -1,7 +1,6 @@
 defmodule AshBoundary do
   @moduledoc """
   Declares a [`boundary`](https://hex.pm/packages/boundary) for an `Ash.Domain`.
-  Only the domain's public API is reachable from outside code.
 
   AshBoundary derives the `boundary` declaration from the domain DSL:
 
@@ -25,6 +24,14 @@ defmodule AshBoundary do
         end
       end
 
+  This is the same declaration `use Boundary, deps: [...], exports: [...]` would
+  install by hand. Every option in the `boundary` section passes straight
+  through to `boundary`, unchanged: see `Boundary`'s own documentation for what
+  `deps`, `exports`, `check`, `type` and `dirty_xrefs` do and what `boundary`
+  checks by default. AshBoundary adds one thing on top: `exports` is computed to
+  include the domain module itself and every resource with at least one
+  domain-level `define`, in addition to whatever the `exports` option names.
+
   ## Setup
 
   Add the `:boundary` compiler to your project configuration:
@@ -43,38 +50,8 @@ defmodule AshBoundary do
     * Each resource that exposes a code interface in the domain is public.
     * Each module named in `exports` is public.
     * All other modules in the domain's namespace are internal.
-    * Referencing another domain requires an explicit `boundary` dep.
-
-  AshBoundary sets `check: [aliases: true]` so `boundary` reports any cross-domain relationships as violations.
-
-  ## Read-only relationships
-
-  A relationship into another domain's resource needs a `deps` entry for that
-  domain. With `allow_read_only_relationships? true`, a relationship declaring
-  `writable?: false` does not, and the target must still be exported by the
-  domain that owns it:
-
-      defmodule MyApp.Shipping do
-        use Ash.Domain, extensions: [AshBoundary]
-
-        boundary do
-          allow_read_only_relationships? true
-        end
-
-        resources do
-          resource MyApp.Shipping.Shipment do
-            define :get_shipment, action: :read
-          end
-        end
-      end
-
-  A two-way relationship declares the dep on the writable side only, so the two
-  domains do not depend on each other.
-
-  For a `manual` relationship, the exemption also covers the modules the
-  `manual` option names: the implementation module itself, and any module given
-  as one of its option values. Those modules are part of the same read path the
-  relationship sanctions.
+    * Referencing another domain requires an explicit `boundary` dep, subject to
+      whatever `check` that domain declares.
   """
 
   @deps_type {:or, [:module, {:tuple, [:module, {:one_of, [:compile, :runtime]}]}]}
@@ -124,27 +101,34 @@ defmodule AshBoundary do
 
         A resource of this domain is rejected here. Resource exports come from
         `resources`, where a domain-level `define` makes a resource public.
+        This option adds to that computed list rather than replacing it.
         """
       ],
-      allow_read_only_relationships?: [
-        type: :boolean,
-        default: false,
+      dirty_xrefs: [
+        type: {:list, :module},
+        default: [],
+        doc: "Passed through to `boundary`'s `dirty_xrefs` option, unchanged."
+      ],
+      check: [
+        type: {:or, [nil, :keyword_list]},
+        default: nil,
         doc: """
-        Whether this domain's resources may name another domain's resource in a
-        read-only relationship without a `deps` entry for that domain.
+        Passed through to `boundary`'s `check` option, unchanged.
 
-        A relationship qualifies when it declares `writable?: false`, which is
-        what stops it creating or updating the resource on the other side. The
-        target still has to be exported by the domain that owns it.
+        Left unset, this domain gets whatever `boundary` itself defaults to, or
+        whatever the consuming project sets as `boundary: [default: [check: ...]]`
+        in `mix.exs`. AshBoundary does not change or add to it.
+        """
+      ],
+      type: [
+        type: {:or, [nil, {:one_of, [:strict, :relaxed]}]},
+        default: nil,
+        doc: """
+        Passed through to `boundary`'s `type` option, unchanged.
 
-        Set this on the read-only side of a two-way relationship. The writable
-        side keeps its `deps` entry, so only one of the two directions is a
-        dependency and the pair is not a cycle.
-
-        The exemption covers a target module rather than one relationship, so a
-        domain declaring both a read-only and a writable relationship to the
-        same resource is rejected at compile time. A target is read-only from a
-        domain or it is not.
+        Left unset, this domain gets whatever `boundary` itself defaults to, or
+        whatever the consuming project sets as `boundary: [default: [type: ...]]`
+        in `mix.exs`.
         """
       ]
     ]

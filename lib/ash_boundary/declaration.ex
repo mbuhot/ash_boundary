@@ -66,32 +66,6 @@ defmodule AshBoundary.Declaration do
   end
 
   @doc """
-  The `:check` options AshBoundary declares for a domain.
-
-  Merges `aliases: true` into the project-level
-  `boundary: [default: [check: ...]]` from `mix.exs`, rather than replacing it.
-  An explicit `aliases:` entry there wins.
-  """
-  @spec check_opts() :: keyword()
-  def check_opts, do: check_opts(project_check())
-
-  @doc """
-  `check_opts/0` against an explicit project-level `check` keyword list.
-
-      iex> AshBoundary.Declaration.check_opts([])
-      [aliases: true]
-
-      iex> AshBoundary.Declaration.check_opts(apps: [:some_app])
-      [aliases: true, apps: [:some_app]]
-
-      iex> AshBoundary.Declaration.check_opts(aliases: false)
-      [aliases: false]
-  """
-  @spec check_opts(keyword()) :: keyword()
-  def check_opts(project_check) when is_list(project_check),
-    do: Keyword.put_new(project_check, :aliases, true)
-
-  @doc """
   Converts fully qualified export modules into the boundary-relative form.
 
   Drops the boundary module itself. Returns `{:error, modules}` for modules
@@ -131,11 +105,4 @@ defmodule AshBoundary.Declaration do
   def declared?(module) when is_atom(module), do: not is_nil(definition(module))
 
   defp app, do: Keyword.fetch!(Mix.Project.config(), :app)
-
-  defp project_check do
-    Mix.Project.config()
-    |> Keyword.get(:boundary, [])
-    |> Keyword.get(:default, [])
-    |> Keyword.get(:check, [])
-  end
 end

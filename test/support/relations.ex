@@ -1,6 +1,7 @@
 defmodule AshBoundary.Test.Relations do
   @moduledoc """
-  Fixture domain used to prove that *alias* references are checked, not just calls.
+  Fixture domain used to prove that *alias* references, unlike calls, are not checked
+  by default.
 
   Its resources are compiled inside the test that needs them, so that `boundary`'s own
   compiler tracer is installed and records the references — which is why the `resources`
@@ -9,9 +10,9 @@ defmodule AshBoundary.Test.Relations do
   nesting and knows nothing about Ash, so `AshBoundary.Test.Relations.Ticket` belongs to
   this boundary whether or not Ash considers it part of this domain.
 
-  `deps [AshBoundary.Test.Blog]` is deliberate: with the dependency declared, the only
-  error a reference into `Blog` can produce is `:not_exported`, so a test asserting on
-  that is really asserting about exports rather than about a missing dep.
+  `deps [AshBoundary.Test.Blog]` costs nothing to declare and matches what a real domain
+  with a relationship into `Blog` would carry, even though an alias reference alone would
+  compile the same way without it.
   """
 
   use Ash.Domain, extensions: [AshBoundary], validate_config_inclusion?: false

@@ -15,9 +15,13 @@ defmodule Example.Blog.Post do
     attribute :title, :string, allow_nil?: false, public?: true
     attribute :body, :string, allow_nil?: false, public?: true
     attribute :published?, :boolean, allow_nil?: false, public?: true, default: true
-
-    # belongs_to :author, Example.Accounts.Author is not allowed
     attribute :author_id, :uuid, allow_nil?: false, public?: true
+  end
+
+  relationships do
+    # A relationship into another domain's resource is an alias reference, which `boundary`
+    # does not check by default. This compiles with no `deps` entry naming `Accounts` for it.
+    belongs_to :author, Example.Accounts.Author, define_attribute?: false, writable?: false
   end
 
   calculations do

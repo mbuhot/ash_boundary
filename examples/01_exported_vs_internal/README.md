@@ -24,19 +24,20 @@ A domain-level `define` in the `resources` block exports a resource. A resource-
   functions. That reference stays inside one boundary.
 - `ExportedVsInternal.Storefront` (`lib/exported_vs_internal/storefront.ex`) is the second
   domain. It exports `Storefront.Listing`.
-- `Storefront.Listing` holds `attribute :product_id, :uuid` and no relationship, plus a
-  `:sale_price` calculation.
-- `Storefront.Calculations.SalePrice` is the calculation module, internal to `Storefront`. It is
-  the only module in `Storefront` that mentions `Catalog` for listing data.
+- `Storefront.Listing` holds `attribute :product_id, :uuid`, a `:sale_price` calculation, and a
+  `belongs_to :pricing, Catalog.InternalPricing` relationship, even though `InternalPricing` is
+  internal to `Catalog`.
+- `Storefront.Calculations.SalePrice` is the calculation module, internal to `Storefront`. It
+  mentions `Catalog` for listing data by way of `Catalog`'s exported interface.
 
 The computed declarations:
 
 ```elixir
 AshBoundary.Declaration.definition(ExportedVsInternal.Catalog).opts
-#=> [exports: [Product], deps: [], check: [aliases: true], top_level?: true]
+#=> [exports: [Product], deps: [], top_level?: true]
 
 AshBoundary.Declaration.definition(ExportedVsInternal.Storefront).opts
-#=> [exports: [Listing], deps: [ExportedVsInternal.Catalog], check: [aliases: true], top_level?: true]
+#=> [exports: [Listing], deps: [ExportedVsInternal.Catalog], top_level?: true]
 ```
 
 AshBoundary declares every domain `top_level?: true`, so the two domains are siblings even though
@@ -70,18 +71,22 @@ thousand makes one call into `Catalog`.
 never receives a pricing record. `Catalog` can change how a sale price is computed or stored while
 `product_sale_prices/1` keeps answering the same question.
 
-## The forbidden references
+## Relationships across domains, in both directions
 
-Two are carried as comments beside the code that replaced them:
+`boundary` does not check alias references by default, and AshBoundary sets no `check` option of
+its own. A relationship compiles to exactly that kind of reference, so `Storefront.Listing`
+carries a real `belongs_to :pricing, ExportedVsInternal.Catalog.InternalPricing` relationship,
+and `Catalog.InternalPricing` carries the reverse `has_one :listing`. Neither domain names the
+other in `deps` for this: `Catalog` declares no `boundary` section at all, and the relationship
+still compiles cleanly in both directions.
 
-- `lib/exported_vs_internal/storefront/listing.ex` names the `belongs_to` that
-  `attribute :product_id, :uuid` replaces. Written as a relationship, it is a forbidden reference
-  to `ExportedVsInternal.Catalog.InternalPricing`. AshBoundary sets `check: [aliases: true]`,
-  which is what makes a cross-domain relationship a caught reference rather than a silent one.
-- `lib/exported_vs_internal/storefront/calculations/sale_price.ex` carries a per-record call into
-  `InternalPricing`, directly above the allowed batched one. Uncomment it and `boundary` reports
-  the same forbidden reference. The warning names the module and no function. The resource's
-  working code interface does not change the outcome.
+A `define`d call remains checked either way. `lib/exported_vs_internal/storefront/calculations/sale_price.ex`
+carries a per-record call into `InternalPricing`, directly above the allowed batched one.
+Uncomment it and `boundary` reports a forbidden reference: the warning names the module and no
+function, because the resource's working code interface does not change the outcome.
+
+A domain that wants relationships checked the same way opts in with `check [aliases: true]` in
+its `boundary` block.
 
 ## Tests
 

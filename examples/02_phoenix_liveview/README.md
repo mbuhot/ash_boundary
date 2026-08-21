@@ -17,15 +17,17 @@ reaches both domains through their exported interfaces and builds its form throu
   `contributors/0`, `register_author/2`, `author_bylines/1`, `invite_author/2` and
   `remove_author/1`. They return maps, ids and strings.
 - `Accounts.Author` has no domain-level `define`, so AshBoundary leaves it out of `exports`. It
-  holds `name`, `handle`, a `:display_name` module calculation, `has_many :invitations`, a
+  holds `name`, `handle`, a `:display_name` module calculation, `has_many :invitations`,
+  `has_many :posts` (the reverse of `Blog.Post`'s `belongs_to :author`), a
   `count :pending_invitations` aggregate, and an `update :invite` action that creates an invitation
   through `manage_relationship`.
 - `Accounts.Invitation` is internal as well. Nothing outside `Example.Accounts.*` names either
   resource.
 - `Example.Blog` (`lib/example/blog.ex`) is the blog domain. It declares
   `deps [Example.Accounts]` and exports `Example.Blog.Post`.
-- `Blog.Post` holds `attribute :author_id, :uuid` and no relationship, plus `:byline`, `:excerpt`
-  and `:word_count` calculations. `read :list_published` and `read :by_id` load all three.
+- `Blog.Post` holds `attribute :author_id, :uuid`, a `belongs_to :author, Accounts.Author`
+  relationship over that same attribute, plus `:byline`, `:excerpt` and `:word_count`
+  calculations. `read :list_published` and `read :by_id` load all three calculations.
 - `Blog.Post.Calculations.Byline` calls `Example.Accounts.author_bylines!/1` once per batch and
   gets back `%{author_id => display_name}`.
 - `ExampleWeb` (`lib/example_web.ex`) is the web boundary, and the rest of `ExampleWeb.*` is
@@ -38,10 +40,10 @@ The computed declarations:
 
 ```elixir
 AshBoundary.Declaration.definition(Example.Accounts).opts
-#=> [exports: [Directory], deps: [], check: [aliases: true], top_level?: true]
+#=> [exports: [Directory], deps: [], top_level?: true]
 
 AshBoundary.Declaration.definition(Example.Blog).opts
-#=> [exports: [Post], deps: [Example.Accounts], check: [aliases: true], top_level?: true]
+#=> [exports: [Post], deps: [Example.Accounts], top_level?: true]
 ```
 
 AshBoundary declares every domain `top_level?: true`, so both domains are siblings of `ExampleWeb`
@@ -65,8 +67,9 @@ use Boundary,
   exports: [Endpoint, Telemetry]
 ```
 
-`ExampleWeb` is not a domain, so it calls `use Boundary` itself and sets `aliases: true` to match
-what AshBoundary sets on a domain.
+`ExampleWeb` is not a domain, so it calls `use Boundary` itself. It sets `aliases: true`, unlike
+`Example.Accounts` and `Example.Blog`, so a bare reference to `Ash.*` from `ExampleWeb` is caught
+even when nothing is called on it.
 
 `check: [apps: [:ash, :spark]]` names the applications `boundary` checks, and `deps` is the
 allowlist for them. Phoenix, Plug and Telemetry are not checked and need no entries. `:ash_phoenix`
@@ -108,18 +111,25 @@ build a form. `AshPhoenix.Form.validate/2` and `AshPhoenix.Form.submit/2` do the
 The author select is populated from `Example.Accounts.contributors!/0`, and the form writes
 `author_id` straight onto the post.
 
+## Relationships across domains, in both directions
+
+`boundary` does not check alias references by default, and AshBoundary sets no `check` option of
+its own. A relationship compiles to exactly that kind of reference, so `Blog.Post` carries a real
+`belongs_to :author, Example.Accounts.Author` relationship, and `Accounts.Author` carries the
+reverse `has_many :posts`. Neither domain names the other for this: `Example.Accounts` declares no
+`boundary` section at all, and the relationship still compiles cleanly in both directions.
+
 ## The forbidden references
 
-Three are carried as comments beside the code that replaced them:
+Two are carried as comments beside the code that replaced them:
 
 - `lib/example_web/live/post_live.ex` carries `Ash.read!(Example.Blog.Post)` above the call to
   `Example.Blog.list_published_posts!/0`. Uncomment it and `boundary` reports a forbidden
   reference to `Ash`. The resource module stays legal, because `Example.Blog` exports it.
 - `lib/example/blog/post/calculations/byline.ex` carries a direct read of `Accounts.Author` above
   the call to `Example.Accounts.author_bylines!/1`. `boundary` reports `Accounts.Author` as not
-  exported by its owner boundary.
-- `lib/example/blog/post.ex` names the `belongs_to` that `attribute :author_id, :uuid` replaces.
-  Written as a relationship, it is the same forbidden reference to `Accounts.Author`.
+  exported by its owner boundary. This one is a `:call` reference rather than an alias reference,
+  so it is checked whether or not `check: [aliases: true]` is set anywhere.
 
 Drop `deps [Example.Accounts]` from `Example.Blog` and the byline call becomes a forbidden
 reference too. The dep grants access to the domain. The exports decide how far it reaches.

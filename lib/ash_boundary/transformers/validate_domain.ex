@@ -2,15 +2,12 @@ defmodule AshBoundary.Transformers.ValidateDomain do
   @moduledoc """
   Rejects, at compile time, domains that `boundary` could not correctly
   describe: a hand-written `use Boundary` alongside the extension, a resource or
-  an export outside the domain's namespace, an `exports` entry that names a
-  resource, a `deps` entry that is not a boundary, and a read-only relationship
-  whose target its own domain does not export.
+  an export outside the domain's namespace, and an `exports` entry that names a
+  resource.
   """
 
   use Spark.Dsl.Transformer
 
-  alias Ash.Resource.Info, as: ResourceInfo
-  alias AshBoundary.Declaration
   alias AshBoundary.Info
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
@@ -33,26 +30,8 @@ defmodule AshBoundary.Transformers.ValidateDomain do
     with :ok <- validate_no_manual_declaration(module),
          :ok <- validate_resources_are_nested(dsl, module),
          :ok <- validate_exports_are_nested(dsl, module),
-         :ok <- validate_exports_are_not_resources(dsl, module),
-         :ok <- validate_deps_are_boundaries(dsl, module),
-         :ok <- validate_read_only_targets_are_not_written(dsl, module) do
-      defer_read_only_target_check(dsl, module)
+         :ok <- validate_exports_are_not_resources(dsl, module) do
       {:ok, dsl}
-    end
-  end
-
-  @doc false
-  @spec __after_compile__(Macro.Env.t(), binary()) :: :ok
-  def __after_compile__(%{module: module}, _bytecode) do
-    problems =
-      for relationship <- Info.read_only_relationships(module),
-          domain = owning_domain(relationship),
-          relationship.destination not in Info.exports(domain),
-          do: {relationship, domain}
-
-    case problems do
-      [] -> :ok
-      problems -> raise read_only_targets_error(module, problems)
     end
   end
 
@@ -203,185 +182,4 @@ defmodule AshBoundary.Transformers.ValidateDomain do
 
   defp resource_of([_module]), do: "a resource of"
   defp resource_of(_modules), do: "resources of"
-
-  defp validate_deps_are_boundaries(dsl, module) do
-    problems =
-      for dep <- Enum.uniq(Info.dep_modules(dsl)),
-          problem = dep_problem(module, dep),
-          do: {dep, problem}
-
-    case problems do
-      [] -> :ok
-      problems -> {:error, deps_error(module, problems)}
-    end
-  end
-
-  defp dep_problem(module, module), do: :self
-
-  defp dep_problem(_module, dep) do
-    case Code.ensure_compiled(dep) do
-      {:module, _module} -> if not Declaration.declared?(dep), do: :not_a_boundary
-      {:error, :unavailable} -> :cycle
-      {:error, reason} -> {:missing, reason}
-    end
-  end
-
-  defp deps_error(module, problems) do
-    DslError.exception(
-      module: module,
-      path: [:boundary, :deps],
-      message:
-        Enum.map_join(problems, "\n\n", fn {dep, problem} -> explain(module, dep, problem) end)
-    )
-  end
-
-  defp explain(module, _dep, :self) do
-    """
-    #{inspect(module)} lists itself in `deps`.
-
-    A boundary may always reach its own modules, so this entry has no effect. Remove it.\
-    """
-  end
-
-  defp explain(module, dep, :not_a_boundary) do
-    """
-    #{inspect(module)} declares a dependency on #{inspect(dep)}, which is not a boundary.
-
-    Every entry in `deps` has to declare a boundary of its own, otherwise there is \
-    nothing for the dependency to be checked against - `boundary` cannot tell which \
-    modules #{inspect(dep)} owns, or which of them it considers public.
-
-    If #{inspect(dep)} is an `Ash.Domain`, add `extensions: [AshBoundary]` to it. If it \
-    is an ordinary module you want to treat as a boundary, add `use Boundary` to it. \
-    Otherwise remove it from `deps`: only boundaries need to be declared, and plain \
-    modules in your own app are not boundaries.\
-    """
-  end
-
-  defp explain(module, dep, :cycle) do
-    """
-    #{inspect(module)} and #{inspect(dep)} depend on each other.
-
-    #{inspect(dep)} exists, but is still being compiled and is itself waiting on \
-    #{inspect(module)}, so neither can be checked against the other. AshBoundary has to \
-    know whether a dep is a boundary while the domain declaring it compiles, which a \
-    cycle makes impossible.
-
-    `boundary` rejects mutually dependent boundaries anyway: a dependency is meant to \
-    record which side is allowed to know about the other, and two domains that both \
-    reach into each other have no boundary between them worth enforcing. Break the cycle \
-    by removing one of the two `deps` entries, and move whatever the removed direction \
-    needed behind a code interface on the side that keeps its dep.\
-    """
-  end
-
-  defp explain(module, dep, {:missing, reason}) do
-    """
-    #{inspect(module)} declares a dependency on #{inspect(dep)}, which could not be \
-    loaded (#{inspect(reason)}).
-
-    `deps` entries are module names; check this one for a typo, and that the module it \
-    names is compiled as part of this application or one of its dependencies.\
-    """
-  end
-
-  defp validate_read_only_targets_are_not_written(dsl, module) do
-    case written_read_only_targets(dsl) do
-      [] -> :ok
-      conflicts -> {:error, written_targets_error(module, conflicts)}
-    end
-  end
-
-  defp written_read_only_targets(dsl) do
-    if Info.allow_read_only_relationships?(dsl) do
-      {read_only, written} =
-        dsl
-        |> Info.cross_boundary_relationships()
-        |> Enum.split_with(&Info.read_only_relationship?/1)
-
-      for relationship <- read_only,
-          writer <- written,
-          writer.destination == relationship.destination,
-          do: {relationship, writer}
-    else
-      []
-    end
-  end
-
-  defp written_targets_error(module, conflicts) do
-    DslError.exception(
-      module: module,
-      path: [:boundary, :allow_read_only_relationships?],
-      message:
-        Enum.map_join(conflicts, "\n\n", fn {relationship, writer} ->
-          explain_written_target(relationship, writer)
-        end)
-    )
-  end
-
-  defp explain_written_target(relationship, writer) do
-    """
-    #{inspect(relationship.destination)} is the destination of the read-only relationship \
-    `:#{relationship.name}` on #{inspect(relationship.source)}, and of the writable \
-    #{writer.type} `:#{writer.name}` on #{inspect(writer.source)}.
-
-    `allow_read_only_relationships? true` exempts a target module rather than a single \
-    relationship, so the exemption would cover #{inspect(writer.source)}.#{writer.name} as \
-    well.
-
-    Name the domain that owns #{inspect(relationship.destination)} in this domain's `deps`, \
-    which is what #{inspect(writer.source)}.#{writer.name} needs in any case.\
-    """
-  end
-
-  defp defer_read_only_target_check(dsl, module) do
-    if Info.allow_read_only_relationships?(dsl) do
-      Module.put_attribute(module, :after_compile, {__MODULE__, :__after_compile__})
-    end
-
-    :ok
-  end
-
-  defp owning_domain(relationship) do
-    with {:module, _module} <- Code.ensure_compiled(relationship.destination),
-         domain when not is_nil(domain) <- declared_domain(relationship),
-         {:module, _module} <- Code.ensure_compiled(domain),
-         true <- Spark.Dsl.is?(domain, Ash.Domain) do
-      domain
-    else
-      _other -> nil
-    end
-  end
-
-  defp declared_domain(relationship) do
-    relationship.domain || ResourceInfo.domain(relationship.destination)
-  end
-
-  defp read_only_targets_error(module, problems) do
-    DslError.exception(
-      module: module,
-      path: [:boundary, :allow_read_only_relationships?],
-      message:
-        Enum.map_join(problems, "\n\n", fn {relationship, domain} ->
-          explain_target(module, relationship, domain)
-        end)
-    )
-  end
-
-  defp explain_target(module, relationship, domain) do
-    """
-    #{inspect(relationship.destination)} is the destination of the read-only relationship \
-    `:#{relationship.name}` on #{inspect(relationship.source)}, and is not exported by \
-    #{inspect(domain)}.
-
-    `allow_read_only_relationships? true` waives the `deps` entry for a read-only \
-    relationship. It does not waive the target's own export: \
-    #{inspect(relationship.destination)} has no domain-level `define` in \
-    #{inspect(domain)}, so it stays internal to that domain and #{inspect(module)} may not \
-    name it.
-
-    Add a `define` for #{inspect(relationship.destination)} to the `resources` block of \
-    #{inspect(domain)}, or remove the relationship.\
-    """
-  end
 end

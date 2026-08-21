@@ -105,12 +105,13 @@ defmodule AshBoundary.ViolationTest do
            ]
   end
 
-  test "a bare alias reference to a non-exported resource is caught" do
+  test "a bare alias reference to a non-exported resource is not caught by default" do
     # Every other violation test above proves its point with `Module.__info__(:module)`,
     # which boundary records as a `:call`. This one names the module and calls *nothing*
     # on it, which boundary records as an `:alias_reference` — a distinct reference type
-    # that `check: [aliases: false]`, boundary's own default, does not check at all.
-    # AshBoundary defaults it on, so this is caught with no project-level config anywhere.
+    # that `check: [aliases: false]`, boundary's own default, does not check. AshBoundary
+    # no longer overrides that default, so a domain gets exactly what a hand-written
+    # `use Boundary` with no `check:` option would.
     references =
       BoundaryCheck.capture_references(AshBoundary.Test.Relations.AliasCaller, """
       defmodule AshBoundary.Test.Relations.AliasCaller do
@@ -121,25 +122,20 @@ defmodule AshBoundary.ViolationTest do
       """)
 
     assert Enum.map(references, & &1.type) == [:alias_reference]
-
-    assert BoundaryCheck.reference_errors(@world, references) == [
-             {:not_exported, AshBoundary.Test.Relations.AliasCaller,
-              AshBoundary.Test.Blog.Comment}
-           ]
+    assert BoundaryCheck.reference_errors(@world, references) == []
   end
 
-  test "an Ash relationship into another domain's non-exported resource is caught" do
-    # The reason the previous test matters, in the shape a real app writes it. A
-    # `belongs_to` naming a resource in another domain compiles to exactly one reference
-    # to that module, of type `:alias_reference` — nothing is called on it. This is design
-    # rule 3 ("a loaded relationship to a non-exported resource is a real, intended
-    # boundary violation") being enforced rather than merely intended.
+  test "a bidirectional relationship between two domains is allowed by default" do
+    # A `belongs_to` naming a resource in another domain compiles to exactly one
+    # reference to that module, of type `:alias_reference` — nothing is called on it.
+    # With aliasing unchecked by default, a relationship into another domain's
+    # non-exported resource compiles cleanly in both directions, with no `deps` entry
+    # required on either side, and no exemption to reach for.
     #
-    # `Relations` declares `deps [Blog]`, so the dependency itself is permitted and
-    # `:not_exported` is the only thing left for the error to be about. The fixture names
-    # no Ash domain: boundary membership comes from module nesting, not from Ash, and
-    # declaring one would only make Ash's "domain does not accept this resource" verifier
-    # complain about a module its domain cannot list before this test compiles it.
+    # The fixture names no Ash domain: boundary membership comes from module nesting,
+    # not from Ash, and declaring one would only make Ash's "domain does not accept
+    # this resource" verifier complain about a module its domain cannot list before
+    # this test compiles it.
     references =
       BoundaryCheck.capture_references(AshBoundary.Test.Relations.Ticket, """
       defmodule AshBoundary.Test.Relations.Ticket do
@@ -164,9 +160,7 @@ defmodule AshBoundary.ViolationTest do
     assert [%{type: :alias_reference, line: 9}] =
              Enum.filter(references, &(&1.to == AshBoundary.Test.Blog.Comment))
 
-    assert BoundaryCheck.reference_errors(@world, references) == [
-             {:not_exported, AshBoundary.Test.Relations.Ticket, AshBoundary.Test.Blog.Comment}
-           ]
+    assert BoundaryCheck.reference_errors(@world, references) == []
   end
 
   test "depending on two domains at once allows reaching each one's exports independently" do
